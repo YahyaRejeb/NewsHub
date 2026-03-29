@@ -128,17 +128,28 @@ export class NewsService {
   }
 
   private mapArticle(item: NewsApiArticle, category: RealCategory, index: number): NewsArticle {
-    const title = item.title?.trim() || 'Untitled article';
-    const rawDescription =
-      item.description?.trim() || 'No description available for this article.';
+    console.log(`[NewsService] Article received - Title: ${item.title?.slice(0, 30)}...`, {
+      description: item.description,
+      content: item.content ? 'Available' : 'Missing'
+    });
+
+    const title = this.stripHtmlTags(item.title?.trim() || 'Untitled article');
+    
+    // Improved description fallback logic
+    const rawDescription = this.stripHtmlTags(
+      item.description?.trim() || 
+      item.content?.trim() || 
+      'No description available for this article.'
+    );
+    
     const content = this.resolveReadableContent(item.content, rawDescription);
     const id = item.article_id || `${category}-${index}-${title}`;
 
     return {
       id,
       title,
-      description: this.truncateText(rawDescription, 120),
-      content,
+      description: this.truncateText(rawDescription, 160), // Increased from 120
+      content: this.stripHtmlTags(content),
       imageUrl: item.image_url || this.getFallbackImage(category),
       sourceName: item.source_name || item.source_id || 'Unknown source',
       publishedAt: item.pubDate || new Date().toISOString(),
@@ -181,6 +192,12 @@ export class NewsService {
       'available in paid plans',
       'only available in paid plans',
       'disponible uniquement dans les forfaits payants',
+      'متاح فقط في الخطط المدفوعة', // Arabic
+      'disponible solo en planes de pago', // Spanish
+      'nur in kostenpflichtigen plänen verfügbar', // German
+      'disponível apenas em planos pagos', // Portuguese
+      'disponibile solo nei piani a pagamento', // Italian
+      '仅在付费套餐中提供', // Chinese
       'premium subscribers',
       'upgrade to premium',
       'subscribe to continue reading'
@@ -198,6 +215,11 @@ export class NewsService {
     }
 
     return `${text.slice(0, maxLength).trimEnd()}...`;
+  }
+
+  private stripHtmlTags(text: string): string {
+    if (!text) return '';
+    return text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
   }
 
   private dedupeArticles(articles: NewsArticle[]): NewsArticle[] {

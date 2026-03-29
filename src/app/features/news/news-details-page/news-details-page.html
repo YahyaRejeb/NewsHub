@@ -31,14 +31,9 @@
 
     <img [src]="article.imageUrl" [alt]="article.title" class="article-image" />
 
-    <p class="body-copy">{{ article.content }}</p>
-    <a
-      class="source-btn"
-      [href]="article.url"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Open original news source"
-    >
+    <p class="body-copy">{{ article.description }}</p>
+    <a class="source-btn" [href]="article.url" target="_blank" rel="noopener noreferrer"
+      aria-label="Open original news source">
       Voir la source de l'actualite
     </a>
 
