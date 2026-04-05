@@ -2,9 +2,10 @@ from fastapi import FastAPI, Form, HTTPException, Body, Request
 from fastapi.responses import RedirectResponse
 import mysql.connector
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
 import time
 import bcrypt
+from datetime import datetime
 
 app = FastAPI()
 
@@ -36,6 +37,42 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
+
+def parse_publication_date(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+
+    safe_value = value.strip()
+    if not safe_value:
+        return None
+
+    if safe_value.endswith("Z"):
+        safe_value = safe_value.replace("Z", "+00:00")
+
+    try:
+        parsed = datetime.fromisoformat(safe_value)
+        return parsed.replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def get_or_create_interest_id(cursor, category: Optional[str]) -> Optional[int]:
+    if not category:
+        return None
+
+    normalized = category.strip()
+    if not normalized:
+        return None
+
+    cursor.execute("SELECT id FROM interests WHERE LOWER(name) = LOWER(%s)", (normalized,))
+    existing = cursor.fetchone()
+    if existing:
+        return existing[0]
+
+    display_name = normalized[0].upper() + normalized[1:].lower() if len(normalized) > 1 else normalized.upper()
+    cursor.execute("INSERT INTO interests (name) VALUES (%s)", (display_name,))
+    return cursor.lastrowid
 
 # Database Settings
 db_config = {
@@ -213,6 +250,31 @@ class LoginData(BaseModel):
     email: str
     password: str
 
+
+class FavoriteArticleData(BaseModel):
+    article_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    source_url: str
+    source_name: Optional[str] = None
+    published_at: Optional[str] = None
+    category: Optional[str] = None
+    datatype: Optional[str] = None
+    country: Optional[str] = None
+
+
+class SaveFavoriteRequest(BaseModel):
+    user_id: int
+    article: FavoriteArticleData
+
+
+class RemoveFavoriteRequest(BaseModel):
+    user_id: int
+    news_id: Optional[int] = None
+    article_url: Optional[str] = None
+
 @app.post("/login")
 def login(data: LoginData):
     conn = None
@@ -234,6 +296,224 @@ def login(data: LoginData):
     except Exception as e:
         print(f"Login error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.post("/favorites")
+def save_favorite(payload: SaveFavoriteRequest):
+    conn = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        conn.start_transaction()
+
+        article_url = (payload.article.source_url or "").strip()
+        if not article_url:
+            raise HTTPException(status_code=400, detail="Article URL is required")
+
+        source_name = (payload.article.source_name or "Unknown source").strip() or "Unknown source"
+
+        cursor.execute(
+            """
+            INSERT INTO source (source_name, source_url)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE
+                id = LAST_INSERT_ID(id),
+                source_url = VALUES(source_url)
+            """,
+            (source_name, article_url),
+        )
+        source_id = cursor.lastrowid
+
+        interest_id = get_or_create_interest_id(cursor, payload.article.category)
+        published_at = parse_publication_date(payload.article.published_at)
+        article_content = payload.article.content or payload.article.description
+
+        cursor.execute(
+            """
+            INSERT INTO news (
+                external_id,
+                title,
+                content,
+                image_url,
+                article_url,
+                published_at,
+                interest_id,
+                source_id,
+                datatype,
+                country
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                id = LAST_INSERT_ID(id),
+                external_id = VALUES(external_id),
+                title = VALUES(title),
+                content = VALUES(content),
+                image_url = VALUES(image_url),
+                published_at = VALUES(published_at),
+                interest_id = VALUES(interest_id),
+                source_id = VALUES(source_id),
+                datatype = VALUES(datatype),
+                country = VALUES(country)
+            """,
+            (
+                payload.article.article_id,
+                payload.article.title,
+                article_content,
+                payload.article.image_url,
+                article_url,
+                published_at,
+                interest_id,
+                source_id,
+                payload.article.datatype,
+                payload.article.country,
+            ),
+        )
+        news_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            INSERT INTO favorite (user_id, news_id)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE saved_at = CURRENT_TIMESTAMP
+            """,
+            (payload.user_id, news_id),
+        )
+
+        conn.commit()
+        return {"message": "Article saved", "news_id": news_id}
+
+    except HTTPException as he:
+        if conn:
+            conn.rollback()
+        raise he
+    except mysql.connector.Error as err:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.delete("/favorites")
+def remove_favorite(payload: RemoveFavoriteRequest):
+    conn = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        if payload.news_id is not None:
+            cursor.execute(
+                "DELETE FROM favorite WHERE user_id = %s AND news_id = %s",
+                (payload.user_id, payload.news_id),
+            )
+        elif payload.article_url:
+            cursor.execute(
+                """
+                DELETE f
+                FROM favorite f
+                INNER JOIN news n ON n.id = f.news_id
+                WHERE f.user_id = %s AND n.article_url = %s
+                """,
+                (payload.user_id, payload.article_url),
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Provide news_id or article_url")
+
+        conn.commit()
+        return {"message": "Article removed from favorites", "removed": cursor.rowcount > 0}
+
+    except HTTPException as he:
+        raise he
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.get("/favorites-status")
+def check_favorite(user_id: int, article_url: str):
+    conn = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT f.news_id
+            FROM favorite f
+            INNER JOIN news n ON n.id = f.news_id
+            WHERE f.user_id = %s AND n.article_url = %s
+            LIMIT 1
+            """,
+            (user_id, article_url),
+        )
+        row = cursor.fetchone()
+        return {"saved": row is not None, "news_id": row["news_id"] if row else None}
+
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.get("/favorites/{user_id}")
+def get_favorites(user_id: int):
+    conn = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT
+                n.id,
+                n.external_id,
+                n.title,
+                n.content,
+                n.image_url,
+                n.article_url,
+                n.published_at,
+                COALESCE(i.name, 'Technology') AS category,
+                COALESCE(s.source_name, 'Unknown source') AS source_name,
+                f.saved_at
+            FROM favorite f
+            INNER JOIN news n ON n.id = f.news_id
+            LEFT JOIN interests i ON i.id = n.interest_id
+            LEFT JOIN source s ON s.id = n.source_id
+            WHERE f.user_id = %s
+            ORDER BY f.saved_at DESC
+            """,
+            (user_id,),
+        )
+        rows = cursor.fetchall()
+
+        favorites = [
+            {
+                "news_id": row["id"],
+                "id": row["external_id"] or str(row["id"]),
+                "title": row["title"],
+                "description": row["content"] or "",
+                "content": row["content"] or "",
+                "imageUrl": row["image_url"] or "",
+                "sourceName": row["source_name"],
+                "publishedAt": row["published_at"].isoformat() if row["published_at"] else datetime.utcnow().isoformat(),
+                "url": row["article_url"],
+                "category": row["category"].lower(),
+                "savedAt": row["saved_at"].isoformat() if row["saved_at"] else None,
+            }
+            for row in rows
+        ]
+        return favorites
+
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
     finally:
         if conn and conn.is_connected():
             cursor.close()

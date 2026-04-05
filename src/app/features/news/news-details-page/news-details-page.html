@@ -25,9 +25,20 @@
 
     <div class="action-row">
       <span class="byline">By {{ article.sourceName }}</span>
-      <button type="button" class="action-btn save-btn" aria-label="Save Article">Save Article</button>
+      <button
+        type="button"
+        class="action-btn save-btn"
+        [class.saved]="isSaved"
+        [disabled]="isSaving"
+        [attr.aria-label]="isSaved ? 'Remove from saved articles' : 'Save Article'"
+        (click)="toggleSaveArticle()"
+      >
+        {{ isSaving ? 'Saving...' : (isSaved ? 'Saved' : 'Save Article') }}
+      </button>
       <button type="button" class="action-btn ask-btn" aria-label="Ask AI">Ask AI</button>
     </div>
+
+    <p *ngIf="saveError" class="save-feedback">{{ saveError }}</p>
 
     <img [src]="article.imageUrl" [alt]="article.title" class="article-image" />
 

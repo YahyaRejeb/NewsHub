@@ -88,6 +88,17 @@ h1 {
   background: #f7f8fb;
 }
 
+.action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.save-btn.saved {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
 .action-btn:focus-visible,
 .source-btn:focus-visible,
 .login-btn:focus-visible,
@@ -102,6 +113,12 @@ h1 {
 
 .ask-btn::before {
   content: "\2736 ";
+}
+
+.save-feedback {
+  margin: -6px 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
 }
 
 .article-image {
