@@ -74,6 +74,71 @@ def get_or_create_interest_id(cursor, category: Optional[str]) -> Optional[int]:
     cursor.execute("INSERT INTO interests (name) VALUES (%s)", (display_name,))
     return cursor.lastrowid
 
+
+def upsert_news_record(cursor, article) -> int:
+    article_url = (article.source_url or "").strip()
+    if not article_url:
+        raise HTTPException(status_code=400, detail="Article URL is required")
+
+    source_name = (article.source_name or "Unknown source").strip() or "Unknown source"
+
+    cursor.execute(
+        """
+        INSERT INTO source (source_name, source_url)
+        VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE
+            id = LAST_INSERT_ID(id),
+            source_url = VALUES(source_url)
+        """,
+        (source_name, article_url),
+    )
+    source_id = cursor.lastrowid
+
+    interest_id = get_or_create_interest_id(cursor, article.category)
+    published_at = parse_publication_date(article.published_at)
+    article_content = article.content or article.description
+
+    cursor.execute(
+        """
+        INSERT INTO news (
+            external_id,
+            title,
+            content,
+            image_url,
+            article_url,
+            published_at,
+            interest_id,
+            source_id,
+            datatype,
+            country
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            id = LAST_INSERT_ID(id),
+            external_id = VALUES(external_id),
+            title = VALUES(title),
+            content = VALUES(content),
+            image_url = VALUES(image_url),
+            published_at = VALUES(published_at),
+            interest_id = VALUES(interest_id),
+            source_id = VALUES(source_id),
+            datatype = VALUES(datatype),
+            country = VALUES(country)
+        """,
+        (
+            article.article_id,
+            article.title,
+            article_content,
+            article.image_url,
+            article_url,
+            published_at,
+            interest_id,
+            source_id,
+            article.datatype,
+            article.country,
+        ),
+    )
+    return cursor.lastrowid
+
 # Database Settings
 db_config = {
     'host': '127.0.0.1', # Use explicit IP
@@ -275,6 +340,12 @@ class RemoveFavoriteRequest(BaseModel):
     news_id: Optional[int] = None
     article_url: Optional[str] = None
 
+
+class CommentRequest(BaseModel):
+    user_id: int
+    article: FavoriteArticleData
+    comment_text: str
+
 @app.post("/login")
 def login(data: LoginData):
     conn = None
@@ -310,68 +381,7 @@ def save_favorite(payload: SaveFavoriteRequest):
         cursor = conn.cursor()
         conn.start_transaction()
 
-        article_url = (payload.article.source_url or "").strip()
-        if not article_url:
-            raise HTTPException(status_code=400, detail="Article URL is required")
-
-        source_name = (payload.article.source_name or "Unknown source").strip() or "Unknown source"
-
-        cursor.execute(
-            """
-            INSERT INTO source (source_name, source_url)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE
-                id = LAST_INSERT_ID(id),
-                source_url = VALUES(source_url)
-            """,
-            (source_name, article_url),
-        )
-        source_id = cursor.lastrowid
-
-        interest_id = get_or_create_interest_id(cursor, payload.article.category)
-        published_at = parse_publication_date(payload.article.published_at)
-        article_content = payload.article.content or payload.article.description
-
-        cursor.execute(
-            """
-            INSERT INTO news (
-                external_id,
-                title,
-                content,
-                image_url,
-                article_url,
-                published_at,
-                interest_id,
-                source_id,
-                datatype,
-                country
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                id = LAST_INSERT_ID(id),
-                external_id = VALUES(external_id),
-                title = VALUES(title),
-                content = VALUES(content),
-                image_url = VALUES(image_url),
-                published_at = VALUES(published_at),
-                interest_id = VALUES(interest_id),
-                source_id = VALUES(source_id),
-                datatype = VALUES(datatype),
-                country = VALUES(country)
-            """,
-            (
-                payload.article.article_id,
-                payload.article.title,
-                article_content,
-                payload.article.image_url,
-                article_url,
-                published_at,
-                interest_id,
-                source_id,
-                payload.article.datatype,
-                payload.article.country,
-            ),
-        )
-        news_id = cursor.lastrowid
+        news_id = upsert_news_record(cursor, payload.article)
 
         cursor.execute(
             """
@@ -384,6 +394,45 @@ def save_favorite(payload: SaveFavoriteRequest):
 
         conn.commit()
         return {"message": "Article saved", "news_id": news_id}
+
+    except HTTPException as he:
+        if conn:
+            conn.rollback()
+        raise he
+    except mysql.connector.Error as err:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.post("/comments")
+def add_comment(payload: CommentRequest):
+    conn = None
+    try:
+        cleaned_comment = payload.comment_text.strip()
+        if not cleaned_comment:
+            raise HTTPException(status_code=400, detail="Comment text is required")
+
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        conn.start_transaction()
+
+        news_id = upsert_news_record(cursor, payload.article)
+
+        cursor.execute(
+            """
+            INSERT INTO comments (user_id, news_id, comment_content)
+            VALUES (%s, %s, %s)
+            """,
+            (payload.user_id, news_id, cleaned_comment),
+        )
+
+        conn.commit()
+        return {"message": "Comment added", "comment_id": cursor.lastrowid, "news_id": news_id}
 
     except HTTPException as he:
         if conn:
@@ -511,6 +560,48 @@ def get_favorites(user_id: int):
             for row in rows
         ]
         return favorites
+
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.get("/comments")
+def get_comments(article_url: str):
+    conn = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT
+                c.comment_id,
+                c.comment_content,
+                c.createdAt,
+                u.id AS user_id,
+                u.full_name
+            FROM comments c
+            INNER JOIN users u ON u.id = c.user_id
+            INNER JOIN news n ON n.id = c.news_id
+            WHERE n.article_url = %s
+            ORDER BY c.createdAt DESC
+            """,
+            (article_url,),
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                "comment_id": row["comment_id"],
+                "comment_content": row["comment_content"],
+                "createdAt": row["createdAt"].isoformat() if row["createdAt"] else None,
+                "user_id": row["user_id"],
+                "full_name": row["full_name"],
+            }
+            for row in rows
+        ]
 
     except mysql.connector.Error as err:
         raise HTTPException(status_code=500, detail=f"Database Error: {err}")

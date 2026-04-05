@@ -205,6 +205,51 @@ h1 {
   font-weight: 700;
 }
 
+.comment-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  min-height: 120px;
+  color: #111827;
+}
+
+.comment-input:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+.comments-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comment-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+}
+
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.comment-item p {
+  margin: 0;
+  color: #111827;
+  line-height: 1.6;
+}
+
 .state-box {
   padding: 16px;
 }
