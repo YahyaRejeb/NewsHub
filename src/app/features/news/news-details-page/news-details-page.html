@@ -51,12 +51,50 @@
     <hr class="separator" />
 
     <section class="comments" aria-labelledby="comments-heading">
-      <h2 id="comments-heading" class="comments-heading">Comments (2)</h2>
-      <div class="comment-box">
-        <p>You need to be logged in to comment</p>
-        <a class="login-btn" [href]="article.url" target="_blank" rel="noopener noreferrer">
-          Log in to Comment
-        </a>
+      <h2 id="comments-heading" class="comments-heading">Comments ({{ comments.length }})</h2>
+
+      <div *ngIf="isLoggedIn(); else loginPrompt" class="comment-box">
+        <textarea
+          class="comment-input"
+          [(ngModel)]="commentText"
+          rows="4"
+          placeholder="Write your comment..."
+          aria-label="Write a comment"
+        ></textarea>
+
+        <p *ngIf="commentError" class="save-feedback">{{ commentError }}</p>
+
+        <button
+          type="button"
+          class="action-btn login-btn"
+          [disabled]="submittingComment"
+          (click)="submitComment()"
+        >
+          {{ submittingComment ? 'Posting...' : 'Post Comment' }}
+        </button>
+      </div>
+
+      <ng-template #loginPrompt>
+        <div class="comment-box">
+          <p>You need to be logged in to comment</p>
+          <a class="login-btn" [routerLink]="['/login']" [queryParams]="{ returnUrl: loginReturnUrl }">
+            Log in to Comment
+          </a>
+        </div>
+      </ng-template>
+
+      <div *ngIf="loadingComments" class="comment-box">
+        <p>Loading comments...</p>
+      </div>
+
+      <div *ngIf="!loadingComments && comments.length > 0" class="comments-list">
+        <article *ngFor="let comment of comments" class="comment-item">
+          <div class="comment-meta">
+            <strong>{{ comment.full_name }}</strong>
+            <span *ngIf="comment.createdAt">{{ comment.createdAt | date:'MMM d, yyyy, h:mm a' }}</span>
+          </div>
+          <p>{{ comment.comment_content }}</p>
+        </article>
       </div>
     </section>
   </article>

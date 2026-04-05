@@ -25,10 +25,13 @@ export class AuthCard implements OnInit {
   isLoading = false;
   errorMessage = '';
   successUser: any = null;
+  returnUrl = '/';
 
   ngOnInit(): void {
     // Detect mode from route path
     const path = this.router.url;
+    this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+
     if (path.includes('register')) {
       this.mode = 'signup';
     } else {
@@ -74,7 +77,7 @@ export class AuthCard implements OnInit {
   onLoginSuccess(user: any) {
     this.successUser = user;
     localStorage.setItem('currentUser', JSON.stringify(user));
-    this.router.navigate(['/']);
+    this.router.navigateByUrl(this.returnUrl);
   }
 
   switchToSignup() {

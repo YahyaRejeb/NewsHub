@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS favorite (
     FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    news_id INT NOT NULL,
+    comment_content TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE
+);
+
 -- Seed data for interests
 INSERT IGNORE INTO interests (name) VALUES 
 ('Technology'), ('Business'), ('Politics'), 
