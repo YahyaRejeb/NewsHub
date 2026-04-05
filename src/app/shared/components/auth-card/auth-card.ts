@@ -73,8 +73,7 @@ export class AuthCard implements OnInit {
 
   onLoginSuccess(user: any) {
     this.successUser = user;
-    this.step = 3;
-    this.cdr.detectChanges();
+    this.router.navigate(['/']);
   }
 
   switchToSignup() {

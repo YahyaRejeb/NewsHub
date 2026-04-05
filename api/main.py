@@ -4,6 +4,7 @@ import mysql.connector
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import time
+import bcrypt
 
 app = FastAPI()
 
@@ -28,12 +29,20 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
 # Database Settings
 db_config = {
     'host': '127.0.0.1', # Use explicit IP
     'user': 'root',      
     'password': '',      
-    'database': 'NewsHub',
+    'database': 'newshub1',
     'connect_timeout': 5 # 5 seconds timeout
 }
 
@@ -51,9 +60,9 @@ def register_user(
         cursor = conn.cursor(dictionary=True)
         print("Connected. Executing insert...")
 
-        # Using 'password' as it exists in the actual database
-        query = "INSERT INTO users (full_name, email, password) VALUES (%s, %s, %s)"
-        cursor.execute(query, (full_name, email, password))
+        password_hash = hash_password(password)
+        query = "INSERT INTO users (full_name, email, password_hash) VALUES (%s, %s, %s)"
+        cursor.execute(query, (full_name, email, password_hash))
         
         print("Insert executed. Committing...")
         conn.commit()
@@ -141,10 +150,11 @@ async def complete_signup(data: SignupData):
         # Start transaction
         conn.start_transaction()
 
-        # 1. Insert User (using 'password' as it exists in the actual database)
-        query_user = "INSERT INTO users (full_name, email, password) VALUES (%s, %s, %s)"
+        # 1. Insert User with a hashed password
+        password_hash = hash_password(password)
+        query_user = "INSERT INTO users (full_name, email, password_hash) VALUES (%s, %s, %s)"
         try:
-            cursor.execute(query_user, (full_name, email, password))
+            cursor.execute(query_user, (full_name, email, password_hash))
         except mysql.connector.Error as err:
             if err.errno == 1062:
                 raise HTTPException(status_code=400, detail="This email is already registered.")
@@ -209,13 +219,13 @@ def login(data: LoginData):
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
-        # Note: In a real app, you would use password hashing (e.g., bcrypt)
-        cursor.execute("SELECT id, full_name, email FROM users WHERE email = %s AND password = %s", 
-                       (data.email, data.password))
+        cursor.execute("SELECT id, full_name, email, password_hash FROM users WHERE email = %s", (data.email,))
         user = cursor.fetchone()
         
-        if not user:
+        if not user or not verify_password(data.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        user.pop("password_hash", None)
             
         return {"message": "Login successful", "user": user}
         

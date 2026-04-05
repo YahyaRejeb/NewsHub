@@ -2,6 +2,21 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.4.
 
+## Reprendre le projet
+
+Si tu pars de zéro, fais d'abord tourner la base MySQL et l'API Python, puis démarre le front Angular.
+
+1. Crée la base `NewsHub` avec le script `api/init_db.sql`.
+2. Installe les dépendances Python du dossier `api` avec `pip install -r requirements.txt`.
+3. Lance l'API avec `uvicorn main:app --reload` depuis le dossier `api`.
+4. Installe les dépendances du front avec `npm install` à la racine du projet.
+5. Lance le front avec `npm start`.
+
+Si tu avais déjà créé une ancienne base, recrée-la avec le script SQL, parce que la table `users` stocke maintenant un `password_hash`.
+
+Le front utilise l'API Python sur `http://127.0.0.1:8000` pour l'inscription, la connexion et les intérêts.
+Les articles de news viennent de l'API NewsData externe, donc ils peuvent s'afficher même si ta base est vide.
+
 ## Development server
 
 To start a local development server, run:
