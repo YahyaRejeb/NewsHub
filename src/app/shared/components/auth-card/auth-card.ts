@@ -73,6 +73,7 @@ export class AuthCard implements OnInit {
 
   onLoginSuccess(user: any) {
     this.successUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(user));
     this.router.navigate(['/']);
   }
 
