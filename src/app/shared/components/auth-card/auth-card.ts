@@ -5,6 +5,7 @@ import { InterestsForm } from '../interests-form/interests-form';
 import { LoginForm } from '../login-form/login-form';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../../../core/services/auth/auth';
 
 @Component({
   selector: 'app-auth-card',
@@ -18,6 +19,7 @@ export class AuthCard implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
 
   step = 1;
   mode: 'login' | 'signup' = 'login';
@@ -59,10 +61,17 @@ export class AuthCard implements OnInit {
     };
 
     this.http.post('http://127.0.0.1:8000/complete-signup', payload).subscribe({
-      next: () => {
+      next: (responseData: any) => {
         this.isLoading = false;
-        this.step = 3;
-        console.log("Signup complete! Step set to 3.");
+        console.log("Signup complete! Auto logging in...");
+        // Create user object based on registration
+        const user = {
+          id: responseData.user_id,
+          full_name: this.registrationData.full_name,
+          email: this.registrationData.email
+        };
+        this.authService.setCurrentUser(user);
+        this.router.navigate(['/']);
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -76,8 +85,8 @@ export class AuthCard implements OnInit {
 
   onLoginSuccess(user: any) {
     this.successUser = user;
-    localStorage.setItem('currentUser', JSON.stringify(user));
-    this.router.navigateByUrl(this.returnUrl);
+    this.authService.setCurrentUser(user);
+    this.router.navigateByUrl('/');
   }
 
   switchToSignup() {

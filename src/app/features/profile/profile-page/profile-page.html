@@ -1,0 +1,36 @@
+<app-header></app-header>
+<main class="profile-container">
+  <div class="profile-header">
+    <div class="user-info" *ngIf="currentUser">
+      <div class="avatar">{{ currentUser.full_name?.charAt(0) | uppercase }}</div>
+      <div class="details">
+        <h1>Welcome, {{ currentUser.full_name }}</h1>
+        <p class="email">{{ currentUser.email }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-content">
+    <h2>Your Saved Articles</h2>
+    
+    <div *ngIf="isLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading your favorite articles...</p>
+    </div>
+
+    <div *ngIf="!isLoading && savedArticles.length === 0" class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <h3>No saved articles yet</h3>
+      <p>Articles you save will appear here. Start exploring!</p>
+    </div>
+
+    <div class="articles-grid" *ngIf="!isLoading && savedArticles.length > 0">
+      <app-news-card 
+        *ngFor="let article of savedArticles" 
+        [article]="article"
+        class="article-card-wrapper">
+      </app-news-card>
+    </div>
+  </div>
+</main>
+<app-footer></app-footer>

@@ -4,7 +4,7 @@ db_config = {
     'host': 'localhost',
     'user': 'root',
     'password': '',
-    'database': 'NewsHub'
+    'database': 'NewsHub1'
 }
 
 try:

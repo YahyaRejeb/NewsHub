@@ -1,6 +1,6 @@
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href="#">
+    <a class="brand" routerLink="/">
       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-dark">
         <path
@@ -18,8 +18,39 @@
         [attr.aria-pressed]="isDarkMode">
         {{ isDarkMode ? '☾' : '☼' }}
       </button>
-      <a class="login-link" routerLink="/login">Login</a>
-      <a class="signup-btn" routerLink="/register">Register</a>
+
+      <!-- Not Logged In -->
+      <ng-container *ngIf="!currentUser">
+        <a class="login-link" routerLink="/login">Login</a>
+        <a class="signup-btn" routerLink="/register">Register</a>
+      </ng-container>
+
+      <!-- Logged In -->
+      <ng-container *ngIf="currentUser">
+        <div class="profile-box-container">
+          <button class="profile-box" (click)="toggleProfileDropdown()">
+            <div class="profile-avatar">{{ currentUser.full_name?.charAt(0) | uppercase }}</div>
+            <span class="profile-name">{{ currentUser.full_name }}</span>
+            <span class="dropdown-arrow">▾</span>
+          </button>
+
+          <div class="profile-dropdown" *ngIf="showProfileDropdown">
+            <div class="dropdown-header">
+              <p class="user-full-name">{{ currentUser.full_name }}</p>
+              <p class="user-email">{{ currentUser.email }}</p>
+            </div>
+            <hr class="dropdown-divider">
+            <a class="dropdown-item" routerLink="/profile" (click)="closeDropdown()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+              My Favorites
+            </a>
+            <button class="dropdown-item logout-btn" (click)="logout()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              Logout
+            </button>
+          </div>
+        </div>
+      </ng-container>
     </nav>
   </div>
 </header>

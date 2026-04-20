@@ -1,11 +1,18 @@
-from fastapi import FastAPI, Form, HTTPException, Body, Request
+from fastapi import FastAPI, Form, HTTPException, Body, Request, Depends
 from fastapi.responses import RedirectResponse
-import mysql.connector
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import time
-import bcrypt
 from datetime import datetime
+
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy import func
+
+import models, schemas, crud, database
+from security import hash_password, verify_password
 
 app = FastAPI()
 
@@ -30,584 +37,254 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
-
-
-def parse_publication_date(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-
-    safe_value = value.strip()
-    if not safe_value:
-        return None
-
-    if safe_value.endswith("Z"):
-        safe_value = safe_value.replace("Z", "+00:00")
-
-    try:
-        parsed = datetime.fromisoformat(safe_value)
-        return parsed.replace(tzinfo=None)
-    except ValueError:
-        return None
-
-
-def get_or_create_interest_id(cursor, category: Optional[str]) -> Optional[int]:
-    if not category:
-        return None
-
-    normalized = category.strip()
-    if not normalized:
-        return None
-
-    cursor.execute("SELECT id FROM interests WHERE LOWER(name) = LOWER(%s)", (normalized,))
-    existing = cursor.fetchone()
-    if existing:
-        return existing[0]
-
-    display_name = normalized[0].upper() + normalized[1:].lower() if len(normalized) > 1 else normalized.upper()
-    cursor.execute("INSERT INTO interests (name) VALUES (%s)", (display_name,))
-    return cursor.lastrowid
-
-
-def upsert_news_record(cursor, article) -> int:
-    article_url = (article.source_url or "").strip()
-    if not article_url:
-        raise HTTPException(status_code=400, detail="Article URL is required")
-
-    source_name = (article.source_name or "Unknown source").strip() or "Unknown source"
-
-    cursor.execute(
-        """
-        INSERT INTO source (source_name, source_url)
-        VALUES (%s, %s)
-        ON DUPLICATE KEY UPDATE
-            id = LAST_INSERT_ID(id),
-            source_url = VALUES(source_url)
-        """,
-        (source_name, article_url),
-    )
-    source_id = cursor.lastrowid
-
-    interest_id = get_or_create_interest_id(cursor, article.category)
-    published_at = parse_publication_date(article.published_at)
-    article_content = article.content or article.description
-
-    cursor.execute(
-        """
-        INSERT INTO news (
-            external_id,
-            title,
-            content,
-            image_url,
-            article_url,
-            published_at,
-            interest_id,
-            source_id,
-            datatype,
-            country
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            id = LAST_INSERT_ID(id),
-            external_id = VALUES(external_id),
-            title = VALUES(title),
-            content = VALUES(content),
-            image_url = VALUES(image_url),
-            published_at = VALUES(published_at),
-            interest_id = VALUES(interest_id),
-            source_id = VALUES(source_id),
-            datatype = VALUES(datatype),
-            country = VALUES(country)
-        """,
-        (
-            article.article_id,
-            article.title,
-            article_content,
-            article.image_url,
-            article_url,
-            published_at,
-            interest_id,
-            source_id,
-            article.datatype,
-            article.country,
-        ),
-    )
-    return cursor.lastrowid
-
-# Database Settings
-db_config = {
-    'host': '127.0.0.1', # Use explicit IP
-    'user': 'root',      
-    'password': '',      
-    'database': 'newshub1',
-    'connect_timeout': 5 # 5 seconds timeout
-}
-
 @app.post("/register")
 def register_user(
     full_name: str = Form(...), 
     email: str = Form(...), 
-    password: str = Form(...)
+    password: str = Form(...),
+    db: Session = Depends(database.get_db)
 ):
-    conn = None
     try:
         print(f"--- Registration attempt for {email} ---")
-        print("Connecting to database...")
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        print("Connected. Executing insert...")
-
-        password_hash = hash_password(password)
-        query = "INSERT INTO users (full_name, email, password_hash) VALUES (%s, %s, %s)"
-        cursor.execute(query, (full_name, email, password_hash))
-        
-        print("Insert executed. Committing...")
-        conn.commit()
-        user_id = cursor.lastrowid
-        
-        print(f"Success! User ID: {user_id}")
-        return {"message": "Success", "user_id": user_id}
-
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        if err.errno == 1062:
-            raise HTTPException(status_code=400, detail="This email is already registered. Please use a different one.")
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+        new_user = models.User(
+            full_name=full_name,
+            email=email,
+            password_hash=hash_password(password)
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        print(f"Success! User ID: {new_user.id}")
+        return {"message": "Success", "user_id": new_user.id}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="This email is already registered. Please use a different one.")
     except Exception as e:
+        db.rollback()
         print(f"Unexpected error: {e}")
         return {"error": str(e)}
     finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-            print("Database connection closed.")
         print("--- Registration attempt finished ---")
 
 @app.get("/interests")
-def get_interests():
-    conn = None
+def get_interests(db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM interests")
-        rows = cursor.fetchall()
-        interests = [{"id": row[0], "name": row[1]} for row in rows]
-        return interests
+        interests = db.query(models.Interest).all()
+        return [{"id": i.id, "name": i.name} for i in interests]
     except Exception as e:
         print(f"Error fetching interests: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch interests")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
 
 @app.post("/save-interests")
-def save_interests(user_id: int = Body(...), interest_ids: List[int] = Body(...)):
+def save_interests(user_id: int = Body(...), interest_ids: List[int] = Body(...), db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-
-        # Delete existing interests for this user to avoid duplicates if re-submitting
-        cursor.execute("DELETE FROM user_interests WHERE user_id = %s", (user_id,))
+        # Delete existing
+        db.query(models.UserInterest).filter(models.UserInterest.user_id == user_id).delete()
         
-        # Insert new interests
-        query = "INSERT INTO user_interests (user_id, interest_id) VALUES (%s, %s)"
-        data = [(user_id, i_id) for i_id in interest_ids]
-        cursor.executemany(query, data)
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # Insert new
+        new_interests = [models.UserInterest(user_id=user_id, interest_id=i_id) for i_id in interest_ids]
+        db.add_all(new_interests)
+        db.commit()
         return {"message": "Interests saved successfully"}
-
-    except mysql.connector.Error as err:
-        raise HTTPException(status_code=500, detail=str(err))
-
-from pydantic import BaseModel
-
-class SignupData(BaseModel):
-    full_name: str
-    email: str
-    password: str
-    interest_ids: List[int]
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/complete-signup")
-async def complete_signup(data: SignupData):
-    full_name = data.full_name
-    email = data.email
-    password = data.password
-    interest_ids = data.interest_ids
-
-    conn = None
+def complete_signup(data: schemas.SignupData, db: Session = Depends(database.get_db)):
     try:
-        print(f"--- Atomic Signup attempt for {email} ---")
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
+        print(f"--- Atomic Signup attempt for {data.email} ---")
         
-        # Start transaction
-        conn.start_transaction()
-
-        # 1. Insert User with a hashed password
-        password_hash = hash_password(password)
-        query_user = "INSERT INTO users (full_name, email, password_hash) VALUES (%s, %s, %s)"
-        try:
-            cursor.execute(query_user, (full_name, email, password_hash))
-        except mysql.connector.Error as err:
-            if err.errno == 1062:
-                raise HTTPException(status_code=400, detail="This email is already registered.")
-            raise err
-            
-        user_id = cursor.lastrowid
-        print(f"User created with ID: {user_id}")
+        # 1. Insert User
+        new_user = models.User(
+            full_name=data.full_name,
+            email=data.email,
+            password_hash=hash_password(data.password)
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        print(f"User created with ID: {new_user.id}")
 
         # 2. Insert Interests
-        if interest_ids:
-            query_interests = "INSERT INTO user_interests (user_id, interest_id) VALUES (%s, %s)"
-            interest_data = [(user_id, i_id) for i_id in interest_ids]
-            cursor.executemany(query_interests, interest_data)
-            print(f"Linked {len(interest_ids)} interests.")
+        if data.interest_ids:
+            interests = [models.UserInterest(user_id=new_user.id, interest_id=i_id) for i_id in data.interest_ids]
+            db.add_all(interests)
+            db.commit()
+            print(f"Linked {len(data.interest_ids)} interests.")
 
-        conn.commit()
         print("Signup transaction committed successfully.")
-        return {"message": "Signup complete", "user_id": user_id}
-
-    except HTTPException as he:
-        if conn: conn.rollback()
-        raise he
-    except mysql.connector.Error as err:
-        if conn: conn.rollback()
-        print(f"Database error during signup: {err}")
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
+        return {"message": "Signup complete", "user_id": new_user.id}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="This email is already registered.")
     except Exception as e:
-        if conn: conn.rollback()
-        print(f"Unexpected error: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-            print("Database connection closed.")
         print("--- Atomic Signup finished ---")
 
 @app.get("/check-email/{email}")
-def check_email(email: str):
-    conn = None
+def check_email(email: str, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
+        user = db.query(models.User).filter(models.User.email == email).first()
         return {"exists": user is not None}
     except Exception as e:
         print(f"Error checking email: {e}")
         raise HTTPException(status_code=500, detail="Error checking email")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-class LoginData(BaseModel):
-    email: str
-    password: str
-
-
-class FavoriteArticleData(BaseModel):
-    article_id: Optional[str] = None
-    title: str
-    description: Optional[str] = None
-    content: Optional[str] = None
-    image_url: Optional[str] = None
-    source_url: str
-    source_name: Optional[str] = None
-    published_at: Optional[str] = None
-    category: Optional[str] = None
-    datatype: Optional[str] = None
-    country: Optional[str] = None
-
-
-class SaveFavoriteRequest(BaseModel):
-    user_id: int
-    article: FavoriteArticleData
-
-
-class RemoveFavoriteRequest(BaseModel):
-    user_id: int
-    news_id: Optional[int] = None
-    article_url: Optional[str] = None
-
-
-class CommentRequest(BaseModel):
-    user_id: int
-    article: FavoriteArticleData
-    comment_text: str
 
 @app.post("/login")
-def login(data: LoginData):
-    conn = None
+def login(data: schemas.LoginData, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, full_name, email, password_hash FROM users WHERE email = %s", (data.email,))
-        user = cursor.fetchone()
+        user = db.query(models.User).filter(models.User.email == data.email).first()
         
-        if not user or not verify_password(data.password, user["password_hash"]):
+        if not user or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        user.pop("password_hash", None)
-            
-        return {"message": "Login successful", "user": user}
-        
+        return {
+            "message": "Login successful", 
+            "user": {
+                "id": user.id,
+                "full_name": user.full_name,
+                "email": user.email
+            }
+        }
     except HTTPException as he:
         raise he
     except Exception as e:
         print(f"Login error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
 
 @app.post("/favorites")
-def save_favorite(payload: SaveFavoriteRequest):
-    conn = None
+def save_favorite(payload: schemas.SaveFavoriteRequest, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        conn.start_transaction()
-
-        news_id = upsert_news_record(cursor, payload.article)
-
-        cursor.execute(
-            """
-            INSERT INTO favorite (user_id, news_id)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE saved_at = CURRENT_TIMESTAMP
-            """,
-            (payload.user_id, news_id),
+        news_id = crud.upsert_news_record(db, payload.article)
+        
+        stmt = mysql_insert(models.Favorite).values(
+            user_id=payload.user_id,
+            news_id=news_id
         )
-
-        conn.commit()
+        stmt = stmt.on_duplicate_key_update(
+            saved_at=func.current_timestamp()
+        )
+        db.execute(stmt)
+        db.commit()
         return {"message": "Article saved", "news_id": news_id}
-
-    except HTTPException as he:
-        if conn:
-            conn.rollback()
-        raise he
-    except mysql.connector.Error as err:
-        if conn:
-            conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.post("/comments")
-def add_comment(payload: CommentRequest):
-    conn = None
+def add_comment(payload: schemas.CommentRequest, db: Session = Depends(database.get_db)):
     try:
         cleaned_comment = payload.comment_text.strip()
         if not cleaned_comment:
             raise HTTPException(status_code=400, detail="Comment text is required")
 
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        conn.start_transaction()
-
-        news_id = upsert_news_record(cursor, payload.article)
-
-        cursor.execute(
-            """
-            INSERT INTO comments (user_id, news_id, comment_content)
-            VALUES (%s, %s, %s)
-            """,
-            (payload.user_id, news_id, cleaned_comment),
+        news_id = crud.upsert_news_record(db, payload.article)
+        
+        new_comment = models.Comment(
+            user_id=payload.user_id,
+            news_id=news_id,
+            comment_content=cleaned_comment
         )
-
-        conn.commit()
-        return {"message": "Comment added", "comment_id": cursor.lastrowid, "news_id": news_id}
-
-    except HTTPException as he:
-        if conn:
-            conn.rollback()
-        raise he
-    except mysql.connector.Error as err:
-        if conn:
-            conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+        db.add(new_comment)
+        db.commit()
+        db.refresh(new_comment)
+        
+        return {"message": "Comment added", "comment_id": new_comment.comment_id, "news_id": news_id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.delete("/favorites")
-def remove_favorite(payload: RemoveFavoriteRequest):
-    conn = None
+def remove_favorite(payload: schemas.RemoveFavoriteRequest, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-
         if payload.news_id is not None:
-            cursor.execute(
-                "DELETE FROM favorite WHERE user_id = %s AND news_id = %s",
-                (payload.user_id, payload.news_id),
-            )
+            db.query(models.Favorite).filter(
+                models.Favorite.user_id == payload.user_id,
+                models.Favorite.news_id == payload.news_id
+            ).delete()
         elif payload.article_url:
-            cursor.execute(
-                """
-                DELETE f
-                FROM favorite f
-                INNER JOIN news n ON n.id = f.news_id
-                WHERE f.user_id = %s AND n.article_url = %s
-                """,
-                (payload.user_id, payload.article_url),
-            )
+            news = db.query(models.News).filter(models.News.article_url == payload.article_url).first()
+            if news:
+                db.query(models.Favorite).filter(
+                    models.Favorite.user_id == payload.user_id,
+                    models.Favorite.news_id == news.id
+                ).delete()
         else:
             raise HTTPException(status_code=400, detail="Provide news_id or article_url")
 
-        conn.commit()
-        return {"message": "Article removed from favorites", "removed": cursor.rowcount > 0}
-
+        db.commit()
+        return {"message": "Article removed from favorites", "removed": True}
     except HTTPException as he:
         raise he
-    except mysql.connector.Error as err:
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.get("/favorites-status")
-def check_favorite(user_id: int, article_url: str):
-    conn = None
+def check_favorite(user_id: int, article_url: str, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            """
-            SELECT f.news_id
-            FROM favorite f
-            INNER JOIN news n ON n.id = f.news_id
-            WHERE f.user_id = %s AND n.article_url = %s
-            LIMIT 1
-            """,
-            (user_id, article_url),
-        )
-        row = cursor.fetchone()
-        return {"saved": row is not None, "news_id": row["news_id"] if row else None}
-
-    except mysql.connector.Error as err:
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+        news = db.query(models.News).filter(models.News.article_url == article_url).first()
+        if not news:
+            return {"saved": False, "news_id": None}
+            
+        fav = db.query(models.Favorite).filter(
+            models.Favorite.user_id == user_id, 
+            models.Favorite.news_id == news.id
+        ).first()
+        
+        return {"saved": fav is not None, "news_id": news.id if fav else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.get("/favorites/{user_id}")
-def get_favorites(user_id: int):
-    conn = None
+def get_favorites(user_id: int, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            """
-            SELECT
-                n.id,
-                n.external_id,
-                n.title,
-                n.content,
-                n.image_url,
-                n.article_url,
-                n.published_at,
-                COALESCE(i.name, 'Technology') AS category,
-                COALESCE(s.source_name, 'Unknown source') AS source_name,
-                f.saved_at
-            FROM favorite f
-            INNER JOIN news n ON n.id = f.news_id
-            LEFT JOIN interests i ON i.id = n.interest_id
-            LEFT JOIN source s ON s.id = n.source_id
-            WHERE f.user_id = %s
-            ORDER BY f.saved_at DESC
-            """,
-            (user_id,),
-        )
-        rows = cursor.fetchall()
-
-        favorites = [
-            {
-                "news_id": row["id"],
-                "id": row["external_id"] or str(row["id"]),
-                "title": row["title"],
-                "description": row["content"] or "",
-                "content": row["content"] or "",
-                "imageUrl": row["image_url"] or "",
-                "sourceName": row["source_name"],
-                "publishedAt": row["published_at"].isoformat() if row["published_at"] else datetime.utcnow().isoformat(),
-                "url": row["article_url"],
-                "category": row["category"].lower(),
-                "savedAt": row["saved_at"].isoformat() if row["saved_at"] else None,
-            }
-            for row in rows
-        ]
-        return favorites
-
-    except mysql.connector.Error as err:
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+        favorites = db.query(models.Favorite).filter(models.Favorite.user_id == user_id).order_by(desc(models.Favorite.saved_at)).all()
+        
+        result = []
+        for fav in favorites:
+            news = fav.news
+            interest_name = news.interest.name if news.interest else 'Technology'
+            source_name = news.source.source_name if news.source else 'Unknown source'
+            
+            result.append({
+                "news_id": news.id,
+                "id": news.external_id or str(news.id),
+                "title": news.title,
+                "description": news.content or "",
+                "content": news.content or "",
+                "imageUrl": news.image_url or "",
+                "sourceName": source_name,
+                "publishedAt": news.published_at.isoformat() if news.published_at else datetime.utcnow().isoformat(),
+                "url": news.article_url,
+                "category": interest_name.lower(),
+                "savedAt": fav.saved_at.isoformat() if fav.saved_at else None,
+            })
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.get("/comments")
-def get_comments(article_url: str):
-    conn = None
+def get_comments(article_url: str, db: Session = Depends(database.get_db)):
     try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            """
-            SELECT
-                c.comment_id,
-                c.comment_content,
-                c.createdAt,
-                u.id AS user_id,
-                u.full_name
-            FROM comments c
-            INNER JOIN users u ON u.id = c.user_id
-            INNER JOIN news n ON n.id = c.news_id
-            WHERE n.article_url = %s
-            ORDER BY c.createdAt DESC
-            """,
-            (article_url,),
-        )
-        rows = cursor.fetchall()
+        news = db.query(models.News).filter(models.News.article_url == article_url).first()
+        if not news:
+            return []
+            
+        comments = db.query(models.Comment).filter(models.Comment.news_id == news.id).order_by(desc(models.Comment.createdAt)).all()
+        
         return [
             {
-                "comment_id": row["comment_id"],
-                "comment_content": row["comment_content"],
-                "createdAt": row["createdAt"].isoformat() if row["createdAt"] else None,
-                "user_id": row["user_id"],
-                "full_name": row["full_name"],
+                "comment_id": c.comment_id,
+                "comment_content": c.comment_content,
+                "createdAt": c.createdAt.isoformat() if c.createdAt else None,
+                "user_id": c.user_id,
+                "full_name": c.user.full_name,
             }
-            for row in rows
+            for c in comments
         ]
-
-    except mysql.connector.Error as err:
-        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-# To run: uvicorn main:app --reload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database Error: {e}")

@@ -61,4 +61,8 @@ export class FavoritesService {
       catchError(() => of(false))
     );
   }
+
+  getFavorites(userId: number): Observable<NewsArticle[]> {
+    return this.http.get<NewsArticle[]>(`${this.apiBaseUrl}/favorites/${userId}`);
+  }
 }
