@@ -70,7 +70,7 @@ export class AuthCard implements OnInit {
           full_name: this.registrationData.full_name,
           email: this.registrationData.email
         };
-        this.authService.setCurrentUser(user);
+        this.authService.setAuthData(user, responseData.access_token);
         this.router.navigate(['/']);
         this.cdr.detectChanges();
       },
@@ -83,9 +83,9 @@ export class AuthCard implements OnInit {
     });
   }
 
-  onLoginSuccess(user: any) {
-    this.successUser = user;
-    this.authService.setCurrentUser(user);
+  onLoginSuccess(res: any) {
+    this.successUser = res.user;
+    this.authService.setAuthData(res.user, res.access_token);
     this.router.navigateByUrl('/');
   }
 

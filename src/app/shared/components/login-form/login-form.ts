@@ -38,7 +38,7 @@ export class LoginForm {
     this.http.post('http://127.0.0.1:8000/login', this.form).subscribe({
       next: (res: any) => {
         this.isLoading = false;
-        this.loginSuccess.emit(res.user);
+        this.loginSuccess.emit(res); // Emit full response (user + token)
         this.cdr.detectChanges();
       },
       error: (err) => {

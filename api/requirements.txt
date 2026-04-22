@@ -5,3 +5,4 @@ python-multipart
 bcrypt
 sqlalchemy
 pymysql
+python-jose[cryptography]

@@ -11,8 +11,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy import func
 
+from fastapi.security import OAuth2PasswordBearer
 import models, schemas, crud, database
-from security import hash_password, verify_password
+from security import hash_password, verify_password, create_access_token, verify_token
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app = FastAPI()
 
@@ -36,6 +39,32 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    payload = verify_token(token)
+    if payload is None:
+        raise credentials_exception
+    email: str = payload.get("sub")
+    if email is None:
+        raise credentials_exception
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+@app.get("/users/me")
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return {
+        "message": "JWT is working! You are authenticated.",
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name
+    }
 
 @app.post("/register")
 def register_user(
@@ -141,8 +170,14 @@ def login(data: schemas.LoginData, db: Session = Depends(database.get_db)):
         if not user or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
+        access_token = create_access_token(
+            data={"sub": user.email, "user_id": user.id}
+        )
+
         return {
             "message": "Login successful", 
+            "access_token": access_token,
+            "token_type": "bearer",
             "user": {
                 "id": user.id,
                 "full_name": user.full_name,
@@ -156,12 +191,17 @@ def login(data: schemas.LoginData, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/favorites")
-def save_favorite(payload: schemas.SaveFavoriteRequest, db: Session = Depends(database.get_db)):
+def save_favorite(
+    payload: schemas.SaveFavoriteRequest, 
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     try:
+        # Secure: Use current_user.id instead of payload.user_id
         news_id = crud.upsert_news_record(db, payload.article)
         
         stmt = mysql_insert(models.Favorite).values(
-            user_id=payload.user_id,
+            user_id=current_user.id,
             news_id=news_id
         )
         stmt = stmt.on_duplicate_key_update(
@@ -175,7 +215,11 @@ def save_favorite(payload: schemas.SaveFavoriteRequest, db: Session = Depends(da
         raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.post("/comments")
-def add_comment(payload: schemas.CommentRequest, db: Session = Depends(database.get_db)):
+def add_comment(
+    payload: schemas.CommentRequest, 
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     try:
         cleaned_comment = payload.comment_text.strip()
         if not cleaned_comment:
@@ -184,7 +228,7 @@ def add_comment(payload: schemas.CommentRequest, db: Session = Depends(database.
         news_id = crud.upsert_news_record(db, payload.article)
         
         new_comment = models.Comment(
-            user_id=payload.user_id,
+            user_id=current_user.id, # Secure: Use authenticated user
             news_id=news_id,
             comment_content=cleaned_comment
         )
@@ -198,18 +242,22 @@ def add_comment(payload: schemas.CommentRequest, db: Session = Depends(database.
         raise HTTPException(status_code=500, detail=f"Database Error: {e}")
 
 @app.delete("/favorites")
-def remove_favorite(payload: schemas.RemoveFavoriteRequest, db: Session = Depends(database.get_db)):
+def remove_favorite(
+    payload: schemas.RemoveFavoriteRequest, 
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     try:
         if payload.news_id is not None:
             db.query(models.Favorite).filter(
-                models.Favorite.user_id == payload.user_id,
+                models.Favorite.user_id == current_user.id, # Secure
                 models.Favorite.news_id == payload.news_id
             ).delete()
         elif payload.article_url:
             news = db.query(models.News).filter(models.News.article_url == payload.article_url).first()
             if news:
                 db.query(models.Favorite).filter(
-                    models.Favorite.user_id == payload.user_id,
+                    models.Favorite.user_id == current_user.id, # Secure
                     models.Favorite.news_id == news.id
                 ).delete()
         else:

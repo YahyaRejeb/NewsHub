@@ -18,16 +18,24 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  setCurrentUser(user: any): void {
+  public getToken(): string | null {
+    return localStorage.getItem('access_token');
+  }
+
+  setAuthData(user: any, token?: string): void {
     if (user) {
       localStorage.setItem('currentUser', JSON.stringify(user));
+      if (token) {
+        localStorage.setItem('access_token', token);
+      }
     } else {
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('access_token');
     }
     this.currentUserSubject.next(user);
   }
 
   logout(): void {
-    this.setCurrentUser(null);
+    this.setAuthData(null);
   }
 }
