@@ -1,0 +1,86 @@
+<app-header></app-header>
+<app-hero-banner></app-hero-banner>
+
+<main class="container home-page">
+  <section class="intro">
+    <span class="intro-kicker">Smart distribution</span>
+    <h2 class="section-title">Latest News</h2>
+    <p class="section-subtitle">
+      The app now preloads category news once per page refresh, then reuses that cached set for fast category changes.
+    </p>
+  </section>
+
+  <section *ngIf="preferredCategories.length > 0" class="preference-banner card">
+    <div>
+      <p class="preference-label">Your preferred interests</p>
+      <h3>Favorite categories are prioritized in the home feed.</h3>
+      <p class="preference-copy">
+        Preferred categories can show up to 10 articles each, while the others show a tighter 5-article snapshot.
+      </p>
+    </div>
+
+    <div class="preference-chips">
+      <span *ngFor="let category of preferredCategories">{{ category }}</span>
+    </div>
+  </section>
+
+  <app-category-filter
+    [categories]="categories"
+    [selectedCategory]="filters.category"
+    [countryOptions]="countryOptions"
+    [sourceOptions]="sourceOptions"
+    [dataTypeOptions]="dataTypeOptions"
+    [filters]="filters"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-category-filter>
+
+  <section *ngIf="loading" class="state-box card">
+    <p>Loading news from the cached category pool...</p>
+  </section>
+
+  <section *ngIf="!loading && error" class="state-box card error-box">
+    <p>{{ error }}</p>
+  </section>
+
+  <section
+    *ngIf="!loading && !error && visibleArticles.length === 0"
+    class="state-box card"
+  >
+    <p>No articles found for the selected view.</p>
+  </section>
+
+  <ng-container *ngIf="!loading && !error && visibleArticles.length > 0">
+    <section *ngIf="showSectionedFeed" class="feed-sections">
+      <article
+        *ngFor="let section of visibleSections; trackBy: trackBySection"
+        class="feed-section"
+      >
+        <div class="section-head">
+          <div>
+            <p class="section-label">{{ section.preferred ? 'Preferred category' : 'Category snapshot' }}</p>
+            <h3>{{ section.category | titlecase }}</h3>
+          </div>
+          <p class="section-meta">
+            Showing {{ section.articles.length }} of {{ section.availableCount }} article{{ section.availableCount > 1 ? 's' : '' }}
+          </p>
+        </div>
+
+        <div class="news-grid">
+          <app-news-card
+            *ngFor="let article of section.articles; trackBy: trackByArticle"
+            [article]="article"
+          ></app-news-card>
+        </div>
+      </article>
+    </section>
+
+    <section *ngIf="!showSectionedFeed" class="news-grid news-grid-top">
+      <app-news-card
+        *ngFor="let article of visibleArticles; trackBy: trackByArticle"
+        [article]="article"
+      ></app-news-card>
+    </section>
+  </ng-container>
+</main>
+
+<app-footer></app-footer>

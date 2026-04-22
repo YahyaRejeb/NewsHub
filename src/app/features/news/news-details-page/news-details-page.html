@@ -1,0 +1,162 @@
+<app-header></app-header>
+
+<main class="container details-page">
+  <section *ngIf="loading" class="state-box card">
+    <p>Loading article details...</p>
+  </section>
+
+  <section *ngIf="!loading && error" class="state-box card error-box">
+    <a routerLink="/" class="back-link" aria-label="Back to News Feed">&larr; Back to News Feed</a>
+    <p>{{ error }}</p>
+  </section>
+
+  <article *ngIf="!loading && !error && article" class="details-card">
+    <a routerLink="/" class="back-link" aria-label="Back to News Feed">&larr; Back to News Feed</a>
+
+    <section class="article-hero">
+      <div class="meta-line">
+        <span class="category-pill">{{ article.category | titlecase }}</span>
+        <span class="source-name">{{ article.sourceName }}</span>
+        <span class="meta-separator">&middot;</span>
+        <span>{{ article.publishedAt | date:'MMM d, yyyy' }}</span>
+        <span class="read-time">{{ article.readTime }} min read</span>
+      </div>
+
+      <h1>{{ article.title }}</h1>
+
+      <div class="action-row">
+        <span class="byline">By {{ article.sourceName }}</span>
+        <button
+          type="button"
+          class="action-btn save-btn"
+          [class.saved]="isSaved"
+          [disabled]="isSaving"
+          [attr.aria-label]="isSaved ? 'Remove from saved articles' : 'Save Article'"
+          (click)="toggleSaveArticle()"
+        >
+          {{ isSaving ? 'Saving...' : (isSaved ? 'Saved' : 'Save Article') }}
+        </button>
+
+        <button
+          *ngIf="isLoggedIn(); else loginForAiAction"
+          type="button"
+          class="action-btn ask-btn"
+          [class.premium-btn]="!isPremiumUser()"
+          [attr.aria-label]="isPremiumUser() ? 'Open premium AI assistant' : 'Upgrade to premium'"
+          (click)="scrollToAssistant()"
+        >
+          {{ isPremiumUser() ? 'Ask Premium AI' : 'Unlock Premium AI' }}
+        </button>
+
+        <ng-template #loginForAiAction>
+          <a
+            class="action-btn login-ai-btn"
+            [routerLink]="['/login']"
+            [queryParams]="{ returnUrl: loginReturnUrl }"
+            aria-label="Log in to use AI chat"
+          >
+            Log in for Premium AI
+          </a>
+        </ng-template>
+      </div>
+
+      <p *ngIf="saveError" class="save-feedback">{{ saveError }}</p>
+    </section>
+
+    <img [src]="article.imageUrl" [alt]="article.title" class="article-image" />
+
+    <section class="article-copy card-section">
+      <p class="body-copy">{{ article.description }}</p>
+      <a class="source-btn" [href]="article.url" target="_blank" rel="noopener noreferrer"
+        aria-label="Open original news source">
+        Voir la source de l'actualite
+      </a>
+    </section>
+
+    <app-article-assistant-panel *ngIf="isLoggedIn() && isPremiumUser()" [article]="article"></app-article-assistant-panel>
+
+    <section *ngIf="isLoggedIn() && !isPremiumUser()" class="assistant-login-card premium-lock-card card-section" id="article-assistant">
+      <div class="assistant-login-copy">
+        <span class="assistant-badge premium-badge">Premium AI</span>
+        <h2>The chatbot is reserved for Premium readers</h2>
+        <p>
+          Upgrade with the simulated premium checkout to unlock grounded summaries, questions, and
+          article-aware explanations directly in this page.
+        </p>
+      </div>
+
+      <div class="assistant-login-actions">
+        <a class="login-btn premium-cta" [routerLink]="['/premium']" [queryParams]="{ returnUrl: loginReturnUrl }">
+          Upgrade with simulation
+        </a>
+      </div>
+    </section>
+
+    <section *ngIf="!isLoggedIn()" class="assistant-login-card card-section" id="article-assistant">
+      <div class="assistant-login-copy">
+        <span class="assistant-badge">NewsHub Assistant</span>
+        <h2>Premium AI is available for signed-in premium readers</h2>
+        <p>
+          Log in first, then activate the premium simulation to unlock article-grounded summaries,
+          key facts, and follow-up questions tied to this story.
+        </p>
+      </div>
+
+      <div class="assistant-login-actions">
+        <a class="login-btn" [routerLink]="['/login']" [queryParams]="{ returnUrl: loginReturnUrl }">
+          Log in to use AI chat
+        </a>
+      </div>
+    </section>
+
+    <hr class="separator" />
+
+    <section class="comments card-section" aria-labelledby="comments-heading">
+      <h2 id="comments-heading" class="comments-heading">Comments ({{ comments.length }})</h2>
+
+      <div *ngIf="isLoggedIn(); else loginPrompt" class="comment-box">
+        <textarea
+          class="comment-input"
+          [(ngModel)]="commentText"
+          rows="4"
+          placeholder="Write your comment..."
+          aria-label="Write a comment"
+        ></textarea>
+
+        <p *ngIf="commentError" class="save-feedback">{{ commentError }}</p>
+
+        <button
+          type="button"
+          class="action-btn login-btn"
+          [disabled]="submittingComment"
+          (click)="submitComment()"
+        >
+          {{ submittingComment ? 'Posting...' : 'Post Comment' }}
+        </button>
+      </div>
+
+      <ng-template #loginPrompt>
+        <div class="comment-box">
+          <p>You need to be logged in to comment</p>
+          <a class="login-btn" [routerLink]="['/login']" [queryParams]="{ returnUrl: loginReturnUrl }">
+            Log in to Comment
+          </a>
+        </div>
+      </ng-template>
+
+      <div *ngIf="loadingComments" class="comment-box">
+        <p>Loading comments...</p>
+      </div>
+
+      <div *ngIf="!loadingComments && comments.length > 0" class="comments-list">
+        <article *ngFor="let comment of comments" class="comment-item">
+          <div class="comment-meta">
+            <strong>{{ comment.full_name }}</strong>
+            <span *ngIf="comment.createdAt">{{ comment.createdAt | date:'MMM d, yyyy, h:mm a' }}</span>
+          </div>
+          <p>{{ comment.comment_content }}</p>
+        </article>
+      </div>
+    </section>
+  </article>
+</main>

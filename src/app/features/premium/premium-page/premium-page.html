@@ -1,0 +1,171 @@
+<app-header></app-header>
+
+<main class="premium-page">
+  <section class="premium-hero card">
+    <div class="hero-copy">
+      <span class="eyebrow">Premium simulation</span>
+      <h1>Unlock the NewsHub chatbot for premium readers.</h1>
+      <p>
+        This checkout is intentionally simulated. It lets us model the premium experience without
+        connecting a real payment gateway.
+      </p>
+
+      <div class="hero-tags">
+        <span>Fake payment flow</span>
+        <span>Instant premium activation</span>
+        <span>Assistant reserved for premium accounts</span>
+      </div>
+    </div>
+
+    <article class="membership-card">
+      <span class="section-kicker">Current status</span>
+      <h2>{{ currentUser ? (isPremiumUser ? 'Premium active' : 'Free account') : 'Guest access' }}</h2>
+      <p *ngIf="currentUser && isPremiumUser">
+        You joined Premium on {{ currentUser.premiumSince | date:'mediumDate' }} with the
+        {{ currentUser.premiumPlan | titlecase }} plan.
+      </p>
+      <p *ngIf="currentUser && !isPremiumUser">
+        Upgrade now to unlock the AI article assistant, premium cues, and a richer reading flow.
+      </p>
+      <p *ngIf="!currentUser">
+        Sign in first to simulate the checkout and attach Premium access to your account.
+      </p>
+
+      <div class="status-strip" [ngClass]="{ active: isPremiumUser, guest: !currentUser }">
+        <strong>{{ isPremiumUser ? 'Premium' : currentUser ? 'Standard' : 'Sign in required' }}</strong>
+        <span>
+          {{
+            isPremiumUser
+              ? 'Chatbot unlocked'
+              : currentUser
+                ? 'Upgrade to use the assistant'
+                : 'Authentication needed before checkout'
+          }}
+        </span>
+      </div>
+
+      <a
+        *ngIf="!currentUser"
+        class="primary-link"
+        [routerLink]="['/login']"
+        [queryParams]="{ returnUrl: '/premium' }"
+      >
+        Sign in to continue
+      </a>
+      <button *ngIf="isPremiumUser" type="button" class="primary-link" (click)="continueAfterUpgrade()">
+        Continue to the app
+      </button>
+    </article>
+  </section>
+
+  <section class="premium-layout">
+    <article class="plans-panel card">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">Offer selection</span>
+          <h2>Choose a simulated plan</h2>
+          <p>Both options activate the same chatbot access. The prices are display-only.</p>
+        </div>
+      </div>
+
+      <div class="plan-grid">
+        <button
+          *ngFor="let plan of plans"
+          type="button"
+          class="plan-card"
+          [class.selected]="checkoutForm.controls.plan.value === plan.id"
+          (click)="selectPlan(plan.id)"
+        >
+          <span class="plan-badge">{{ plan.id === 'annual' ? 'Recommended' : 'Flexible' }}</span>
+          <h3>{{ plan.name }}</h3>
+          <p class="plan-price">{{ plan.price }}</p>
+          <p class="plan-billing">{{ plan.billing }}</p>
+          <p class="plan-highlight">{{ plan.highlight }}</p>
+          <ul>
+            <li *ngFor="let feature of plan.features">{{ feature }}</li>
+          </ul>
+        </button>
+      </div>
+    </article>
+
+    <article class="checkout-panel card">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">Checkout</span>
+          <h2>Simulated payment form</h2>
+          <p>No transaction is sent anywhere. This only marks the connected user as Premium locally.</p>
+        </div>
+      </div>
+
+      <div *ngIf="successMessage" class="feedback success">
+        <p>{{ successMessage }}</p>
+        <p *ngIf="simulatedReceipt">Receipt reference: {{ simulatedReceipt }}</p>
+      </div>
+
+      <div *ngIf="errorMessage" class="feedback error">
+        {{ errorMessage }}
+      </div>
+
+      <form class="checkout-form" [formGroup]="checkoutForm" (ngSubmit)="simulateCheckout()">
+        <label class="field">
+          <span>Selected plan</span>
+          <select formControlName="plan">
+            <option *ngFor="let plan of plans" [value]="plan.id">{{ plan.name }}</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Cardholder name</span>
+          <input type="text" formControlName="cardholderName" placeholder="Reader Premium" />
+          <small *ngIf="checkoutForm.controls.cardholderName.touched && checkoutForm.controls.cardholderName.invalid">
+            Please enter at least 3 characters.
+          </small>
+        </label>
+
+        <label class="field">
+          <span>Card number</span>
+          <input type="text" formControlName="cardNumber" placeholder="4242 4242 4242 4242" />
+          <small *ngIf="checkoutForm.controls.cardNumber.touched && checkoutForm.controls.cardNumber.invalid">
+            Use a simulated 16-digit card number.
+          </small>
+        </label>
+
+        <div class="inline-fields">
+          <label class="field">
+            <span>Expiry</span>
+            <input type="text" formControlName="expiry" placeholder="12/29" />
+          </label>
+
+          <label class="field">
+            <span>CVC</span>
+            <input type="text" formControlName="cvc" placeholder="123" />
+          </label>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="acceptTerms" />
+          <span>I understand this is only a payment simulation.</span>
+        </label>
+        <small *ngIf="checkoutForm.controls.acceptTerms.touched && checkoutForm.controls.acceptTerms.invalid">
+          You must acknowledge the simulation to continue.
+        </small>
+
+        <div class="summary-card">
+          <span class="section-kicker">Summary</span>
+          <h3>{{ selectedPlan.name }}</h3>
+          <p>{{ selectedPlan.price }} {{ selectedPlan.billing }}</p>
+          <p>Result: the current signed-in user gets Premium chatbot access instantly.</p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="secondary-link" [routerLink]="['/profile']">Back to profile</button>
+          <button type="submit" class="primary-link" [disabled]="isProcessing">
+            {{ isProcessing ? 'Activating premium...' : 'Simulate payment' }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </section>
+</main>
+
+<app-footer></app-footer>

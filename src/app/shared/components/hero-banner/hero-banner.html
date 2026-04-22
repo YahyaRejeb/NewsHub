@@ -1,0 +1,53 @@
+<section class="hero card container">
+  <div class="hero-content">
+    <div class="hero-copy">
+      <span class="eyebrow">
+        {{
+          !currentUser
+            ? 'Daily briefing'
+            : isPremiumUser
+              ? 'Premium unlocked'
+              : 'Upgrade available'
+        }}
+      </span>
+      <h1>
+        {{
+          !currentUser
+            ? 'Read smarter, then unlock premium AI when you are ready.'
+            : isPremiumUser
+              ? 'Your premium newsroom is ready for deeper article conversations.'
+              : 'Upgrade to Premium to unlock the NewsHub chatbot.'
+        }}
+      </h1>
+      <p>
+        {{
+          !currentUser
+            ? 'Create an account to save articles, comment, personalize your feed, and prepare for a premium assistant experience.'
+            : isPremiumUser
+              ? 'You can now open any article and use grounded AI explanations, summaries, and follow-up questions.'
+              : 'Premium members get exclusive access to the article assistant through a simple simulated checkout flow.'
+        }}
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <ng-container *ngIf="!currentUser">
+        <a class="secondary-btn" routerLink="/login">Log in</a>
+        <a class="primary-btn" routerLink="/register">Get Started</a>
+        <a class="ghost-btn" routerLink="/premium">See Premium</a>
+      </ng-container>
+
+      <ng-container *ngIf="currentUser && !isPremiumUser">
+        <a class="secondary-btn" routerLink="/profile">Profile</a>
+        <a class="primary-btn" routerLink="/premium" [queryParams]="{ returnUrl: '/profile' }">
+          Unlock Premium
+        </a>
+      </ng-container>
+
+      <ng-container *ngIf="currentUser && isPremiumUser">
+        <a class="secondary-btn" routerLink="/profile">Open Profile</a>
+        <a class="primary-btn" routerLink="/">Explore Articles</a>
+      </ng-container>
+    </div>
+  </div>
+</section>

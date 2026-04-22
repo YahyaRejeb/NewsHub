@@ -1,0 +1,385 @@
+.details-page {
+  width: min(100% - 32px, 1100px);
+  margin-inline: auto;
+  padding-block: 16px 40px;
+}
+
+.details-card {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  box-shadow: var(--shadow);
+}
+
+.article-hero,
+.card-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 22px;
+}
+
+.article-hero {
+  display: grid;
+  gap: 16px;
+}
+
+.back-link {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.category-pill {
+  border-radius: 999px;
+  border: 1px solid #d8dde6;
+  background: #eef2f7;
+  color: #111827;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 9px;
+}
+
+.source-name {
+  color: #64748b;
+}
+
+.meta-separator {
+  line-height: 1;
+}
+
+.read-time::before {
+  content: "\25F7 ";
+}
+
+h1 {
+  margin: 0;
+  max-width: 980px;
+  font-size: clamp(2.05rem, 4vw, 3.05rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-size: 0.92rem;
+  margin-top: -4px;
+}
+
+.byline {
+  margin-right: 2px;
+  font-weight: 600;
+}
+
+.action-btn {
+  border: 1px solid #d6dbe4;
+  border-radius: 7px;
+  background: #fff;
+  color: #111827;
+  padding: 7px 11px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #f7f8fb;
+}
+
+.login-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.save-btn.saved {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.action-btn:focus-visible,
+.source-btn:focus-visible,
+.login-btn:focus-visible,
+.back-link:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+.save-btn::before {
+  content: "\25A1 ";
+}
+
+.ask-btn::before {
+  content: "\2736 ";
+}
+
+.premium-btn {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.save-feedback {
+  margin: -6px 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.article-image {
+  border-radius: 20px;
+  border: 1px solid #dbe3ef;
+  width: 100%;
+  max-height: 620px;
+  object-fit: cover;
+  margin-top: 2px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.article-copy {
+  display: grid;
+  gap: 18px;
+}
+
+.body-copy {
+  margin: 0;
+  color: #111827;
+  line-height: 1.8;
+  font-size: 1.08rem;
+}
+
+.source-btn {
+  width: fit-content;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.source-btn:hover {
+  background: #1e293b;
+}
+
+.separator {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #d9dde4;
+  margin: 4px 0 2px;
+}
+
+.assistant-login-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.98));
+}
+
+.assistant-login-copy {
+  max-width: 720px;
+  display: grid;
+  gap: 10px;
+}
+
+.assistant-login-copy h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.15;
+}
+
+.assistant-login-copy p {
+  margin: 0;
+  color: #526072;
+  line-height: 1.65;
+}
+
+.assistant-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.premium-badge {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.premium-lock-card {
+  border-color: #fcd34d;
+}
+
+.comments {
+  display: grid;
+  gap: 12px;
+}
+
+.comments-heading {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 2.05rem;
+  letter-spacing: -0.01em;
+}
+
+.comments-heading::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2px solid #334155;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.comment-box {
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.comment-box p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.login-btn {
+  border-radius: 7px;
+  background: #0f172a;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.premium-cta {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+}
+
+.comment-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  min-height: 120px;
+  color: #111827;
+}
+
+.comment-input:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+.comments-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comment-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+}
+
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.comment-item p {
+  margin: 0;
+  color: #111827;
+  line-height: 1.6;
+}
+
+.state-box {
+  padding: 16px;
+}
+
+.error-box p {
+  margin: 0;
+  color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .details-card {
+    padding: 18px;
+  }
+
+  .article-hero,
+  .card-section {
+    padding: 18px;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+  }
+
+  .body-copy {
+    font-size: 1rem;
+  }
+
+  .comments-heading {
+    font-size: 1.6rem;
+  }
+
+  .comment-box {
+    padding: 16px;
+  }
+
+  .assistant-login-card {
+    align-items: flex-start;
+  }
+}
