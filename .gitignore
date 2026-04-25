@@ -57,3 +57,5 @@ ENV/
 backend/.cache/
 .npm-cache/
 backend/tests/.tmp-cache/
+.tmp/*.log
+backend/*.db

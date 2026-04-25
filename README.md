@@ -9,7 +9,7 @@ NewsHub is now organized into two clear parts:
 
 Si tu pars de zero, demarre d'abord la base MySQL et l'API Python, puis lance le front Angular.
 
-1. Cree la base `NewsHub` avec le script `backend/init_db.sql`.
+1. Cree la base MySQL `newshub1` avec le script `backend/init_db.sql`.
 2. Installe les dependances Python depuis `backend` avec `pip install -r requirements.txt`.
 3. Lance l'API depuis `backend` avec `uvicorn main:app --reload`.
 4. Va dans `frontend`, puis installe les dependances avec `npm install`.
@@ -49,6 +49,20 @@ uvicorn main:app --reload
 ```
 
 L'API tourne sur `http://127.0.0.1:8000/`.
+
+Par defaut le backend utilise MySQL avec ces parametres :
+
+- `MYSQL_HOST=localhost`
+- `MYSQL_PORT=3306`
+- `MYSQL_USER=root`
+- `MYSQL_PASSWORD=` vide
+- `MYSQL_DATABASE=newshub1`
+
+Tu peux aussi fournir `DATABASE_URL`, mais elle doit pointer vers MySQL, par exemple :
+
+```bash
+DATABASE_URL=mysql+pymysql://root:@localhost:3306/newshub1?charset=utf8mb4
+```
 
 ## Chatbot Qwen3
 

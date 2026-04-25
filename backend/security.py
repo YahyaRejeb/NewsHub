@@ -2,83 +2,15 @@ import os
 import base64
 import hashlib
 import hmac
-import json
 from datetime import datetime, timedelta
 from typing import Optional
+
+from jose import JWTError, jwt  # type: ignore
 
 try:
     import bcrypt  # type: ignore
 except ImportError:  # pragma: no cover - fallback used only when bcrypt is missing
     bcrypt = None
-try:
-    from jose import JWTError, jwt  # type: ignore
-except ImportError:  # pragma: no cover - fallback used only when python-jose is missing
-    class JWTError(Exception):
-        pass
-
-    def _b64url_encode(value: bytes) -> str:
-        return base64.urlsafe_b64encode(value).rstrip(b"=").decode("utf-8")
-
-    def _b64url_decode(value: str) -> bytes:
-        padding = "=" * (-len(value) % 4)
-        return base64.urlsafe_b64decode((value + padding).encode("utf-8"))
-
-    class _SimpleJWT:
-        @staticmethod
-        def encode(payload: dict, secret: str, algorithm: str = "HS256") -> str:
-            if algorithm != "HS256":
-                raise JWTError("Only HS256 is supported by the fallback JWT encoder.")
-
-            header = {"alg": algorithm, "typ": "JWT"}
-            header_text = _b64url_encode(
-                json.dumps(header, separators=(",", ":"), default=str).encode("utf-8")
-            )
-            payload_text = _b64url_encode(
-                json.dumps(payload, separators=(",", ":"), default=str).encode("utf-8")
-            )
-            signing_input = f"{header_text}.{payload_text}".encode("utf-8")
-            signature = hmac.new(secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
-            return f"{header_text}.{payload_text}.{_b64url_encode(signature)}"
-
-        @staticmethod
-        def decode(token: str, secret: str, algorithms: list[str] | None = None) -> dict:
-            allowed = algorithms or ["HS256"]
-            if "HS256" not in allowed:
-                raise JWTError("Only HS256 is supported by the fallback JWT decoder.")
-
-            try:
-                header_text, payload_text, signature_text = token.split(".")
-            except ValueError as exc:
-                raise JWTError("Invalid token format.") from exc
-
-            signing_input = f"{header_text}.{payload_text}".encode("utf-8")
-            expected_signature = hmac.new(
-                secret.encode("utf-8"),
-                signing_input,
-                hashlib.sha256,
-            ).digest()
-            given_signature = _b64url_decode(signature_text)
-
-            if not hmac.compare_digest(expected_signature, given_signature):
-                raise JWTError("Invalid token signature.")
-
-            try:
-                payload = json.loads(_b64url_decode(payload_text).decode("utf-8"))
-            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-                raise JWTError("Invalid token payload.") from exc
-
-            exp = payload.get("exp")
-            if exp is not None:
-                if isinstance(exp, str):
-                    expiration_time = datetime.fromisoformat(exp)
-                else:
-                    expiration_time = datetime.utcfromtimestamp(exp)
-                if expiration_time < datetime.utcnow():
-                    raise JWTError("Token expired.")
-
-            return payload
-
-    jwt = _SimpleJWT()
 
 
 def _read_access_token_expiry_minutes() -> int:
