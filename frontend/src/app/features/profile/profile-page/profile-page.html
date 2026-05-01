@@ -46,6 +46,10 @@
           <strong>{{ isPremiumUser ? 'Premium' : 'Standard' }}</strong>
           <span>{{ isPremiumUser ? (premiumPlanLabel + ' plan') : 'Membership tier' }}</span>
         </article>
+        <article>
+          <strong>{{ isEditor ? 'Editor' : 'Reader' }}</strong>
+          <span>Live room access</span>
+        </article>
       </div>
     </div>
   </section>
@@ -240,8 +244,8 @@
         <span class="section-kicker">Membership</span>
         <h3>{{ isPremiumUser ? 'Premium is active' : 'Unlock Premium access' }}</h3>
         <p *ngIf="isPremiumUser">
-          Your account can use the NewsHub chatbot on article pages. Membership details are stored
-          in local simulation mode for this project.
+          Your account can use the NewsHub chatbot on article pages and join premium live rooms.
+          Membership details are now synced through the backend simulation flow.
         </p>
         <p *ngIf="!isPremiumUser">
           Upgrade with a small simulated checkout to reserve the article assistant for Premium
@@ -250,6 +254,16 @@
         <a class="membership-link" routerLink="/premium" [queryParams]="{ returnUrl: '/profile' }">
           {{ isPremiumUser ? 'View Premium status' : 'Simulate Premium upgrade' }}
         </a>
+      </article>
+
+      <article *ngIf="isEditor" class="side-card card">
+        <span class="section-kicker">Editor workspace</span>
+        <h3>Open the live newsroom</h3>
+        <p>
+          Your account can create one live room at a time, start the room, go live with the camera,
+          and publish official timeline updates.
+        </p>
+        <a class="membership-link" routerLink="/live">Open live hub</a>
       </article>
 
       <article class="side-card card">

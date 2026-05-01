@@ -60,6 +60,10 @@
         <div class="feedback error">{{ errorMessage }}</div>
       }
 
+      @if (isLoading) {
+        <div class="feedback">Processing your request...</div>
+      }
+
       <div class="auth-form-wrap">
         @if (step === 1) {
           @if (mode === 'signup') {

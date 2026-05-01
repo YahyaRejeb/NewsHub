@@ -30,6 +30,7 @@
 }
 
 .theme-btn,
+.live-link,
 .premium-link,
 .upgrade-btn,
 .login-link,
@@ -46,6 +47,14 @@
   cursor: pointer;
   font-size: 0.92rem;
   font-weight: 700;
+}
+
+.live-link {
+  color: var(--text);
+  font-weight: 700;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .premium-link,
@@ -137,6 +146,19 @@
   color: #9a3412;
 }
 
+.editor-badge,
+.editor-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #075985;
+}
+
 .dropdown-arrow {
   color: var(--muted);
   font-size: 0.8rem;
@@ -181,6 +203,10 @@
 .membership-chip.active {
   background: #fff7ed;
   color: #9a3412;
+}
+
+.editor-chip {
+  margin-top: 10px;
 }
 
 .dropdown-divider {

@@ -1,0 +1,207 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\setlist[itemize]{label=--}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{NewsHub}
+\rhead{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\simplebox}[2]{
+\begin{center}
+\begin{tikzpicture}
+\node[draw, rounded corners, fill=blue!5, text width=0.85\textwidth, inner sep=8pt] {
+\textbf{#1}\\[3pt] #2
+};
+\end{tikzpicture}
+\end{center}
+}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+République Tunisienne\\
+Ministère de l'Enseignement Supérieur et de la Recherche Scientifique\\
+Université de Carthage\\
+Institut Supérieur des Technologies de l'Information et de la Communication\\[2cm]
+{\Large \textbf{RAPPORT DE PROJET FÉDÉRÉ}}\\[1cm]
+Présenté en vue de l'obtention de la\\
+\textbf{LICENCE EN SCIENCES DE L'INFORMATIQUE}\\
+Parcours : Génie Logiciel et Systèmes d'Information\\[1.5cm]
+{\Large \textbf{Plateforme Web de News Personnalisées avec Chatbot IA : NewsHub}}\\[1.5cm]
+Yahya Rejeb, Aziz Ben Slimen, Rayen Ben Yahmed\\[1.5cm]
+Année Universitaire 2025--2026
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+Avec la croissance rapide des sources d'information numériques, les utilisateurs sont confrontés à une quantité massive d'actualités publiées chaque jour. Cette abondance d'informations rend difficile l'accès rapide à un contenu pertinent, fiable et adapté aux préférences individuelles.
+
+Les plateformes traditionnelles d'actualités proposent généralement un contenu générique, identique pour tous les utilisateurs, sans prise en compte précise de leurs intérêts spécifiques. De leur côté, les réseaux sociaux offrent une certaine personnalisation, mais leur objectif principal n'est pas toujours la diffusion structurée d'informations fiables issues de sources vérifiées.
+
+Dans ce contexte s'inscrit notre projet fédéré, dont l'objectif est le développement de NewsHub, une plateforme web d'actualités intelligente et personnalisée, combinant la structure des plateformes de news avec des mécanismes dynamiques et interactifs.
+
+Pour modéliser ce projet, nous avons suivi une méthodologie de conception orientée objet, itérative et incrémentale basée sur SCRUM. Le rapport suit l'architecture proposée dans le document exemple : spécification des besoins, étude des sprints, raffinement, conception, réalisation et conclusion.
+
+\chapter{Spécification des besoins}
+\section{Introduction}
+L'analyse des besoins est essentielle pour le succès d'un système. Elle consiste à identifier les attentes de l'utilisateur pour une nouvelle application en cours de création.
+
+\section{Contexte du système}
+Le système proposé est une plateforme web dédiée à la consultation d'actualités personnalisées. Il exploite une API externe d'actualités afin de récupérer des articles provenant de différentes sources d'information.
+
+\section{Identification des besoins fonctionnels}
+\begin{itemize}
+\item créer un compte ;
+\item se connecter ;
+\item consulter le fil d'actualité ;
+\item filtrer les actualités ;
+\item enregistrer une actualité ;
+\item commenter une actualité ;
+\item gérer le profil ;
+\item s'abonner ;
+\item discuter avec le chatbot.
+\end{itemize}
+
+\section{Identification des besoins non fonctionnels}
+\begin{itemize}
+\item Ergonomie : interface intuitive et responsive.
+\item Performance : chargement rapide et réutilisation du cache local.
+\item Sécurité : authentification sécurisée et gestion des rôles.
+\item Extensibilité : ajout futur de nouvelles fonctionnalités.
+\item Fiabilité : traitement correct des données issues de l'API externe.
+\end{itemize}
+
+\section{Identification des acteurs}
+\begin{longtable}{|p{4cm}|p{10cm}|}
+\hline
+\textbf{Acteur} & \textbf{Rôle}\\ \hline
+Visiteur & Créer un compte, se connecter, consulter et filtrer les actualités.\\ \hline
+Utilisateur & Gérer son profil, commenter une actualité, enregistrer une actualité et s'abonner.\\ \hline
+Utilisateur Premium & Discuter avec le chatbot IA et accéder aux services premium.\\ \hline
+\end{longtable}
+
+\section{Diagramme de cas d'utilisation globale}
+\simplebox{Diagramme de cas d'utilisation global}{Visiteur, Utilisateur et Utilisateur Premium interagissent avec NewsHub pour accéder aux fonctionnalités principales de la plateforme.}
+
+\section{Backlog de produit}
+\begin{longtable}{|p{1.5cm}|p{11cm}|p{2cm}|}
+\hline
+\textbf{ID} & \textbf{User Story} & \textbf{Priorité}\\ \hline
+US1 & En tant que visiteur, je veux créer un compte afin d'accéder à la plateforme. & 1\\ \hline
+US2 & En tant que visiteur, je veux me connecter afin d'accéder à mon espace personnel. & 1\\ \hline
+US3 & En tant que visiteur, je veux consulter les actualités afin de rester informé. & 1\\ \hline
+US4 & En tant que visiteur, je veux filtrer les actualités afin de personnaliser mon fil. & 1\\ \hline
+US5 & En tant qu'utilisateur, je veux commenter une actualité. & 2\\ \hline
+US6 & En tant qu'utilisateur, je veux enregistrer une actualité. & 2\\ \hline
+US7 & En tant qu'utilisateur, je veux gérer mon profil. & 2\\ \hline
+US8 & En tant qu'utilisateur, je veux souscrire à un abonnement. & 2\\ \hline
+US9 & En tant qu'utilisateur premium, je veux discuter avec le chatbot. & 2\\ \hline
+\end{longtable}
+
+\section{Environnement de travail}
+La méthodologie adoptée est SCRUM. L'environnement logiciel utilisé comprend Angular, FastAPI, MySQL, Newsdata.io, GitHub et Ollama avec le modèle qwen3:14b.
+
+\section{Conclusion}
+Dans ce chapitre, nous avons identifié les besoins fonctionnels et non fonctionnels, les acteurs principaux, le diagramme global de cas d'utilisation et le backlog du produit.
+
+\chapter{Sprint 0}
+\section{Introduction}
+Dans ce chapitre, nous présentons le premier sprint du projet qui permet de détailler les cas d'utilisation de priorité 1.
+
+\section{Identification de Backlog de Sprint 0}
+\begin{longtable}{|p{1.5cm}|p{11cm}|p{2cm}|}
+\hline
+\textbf{ID} & \textbf{User Story} & \textbf{Priorité}\\ \hline
+US1 & Créer un compte. & 1\\ \hline
+US2 & Se connecter. & 1\\ \hline
+US3 & Consulter le fil d'actualité. & 1\\ \hline
+US4 & Filtrer les actualités. & 1\\ \hline
+\end{longtable}
+
+\section{Raffinement de Sprint 0}
+\subsection{Raffinement du cas d'utilisation « créer compte »}
+\simplebox{Créer compte}{Le visiteur saisit ses informations, choisit ses centres d'intérêt puis valide la création du compte.}
+
+\subsection{Raffinement du cas d'utilisation « se connecter »}
+\simplebox{Se connecter}{L'utilisateur saisit son email et son mot de passe. Le système vérifie les identifiants et ouvre la session.}
+
+\subsection{Raffinement du cas d'utilisation « consulter fil d'actualité »}
+\simplebox{Consulter fil d'actualité}{Le système récupère les articles depuis l'API externe et affiche le fil d'actualité.}
+
+\subsection{Raffinement du cas d'utilisation « filtrer actualité »}
+\simplebox{Filtrer actualité}{L'utilisateur choisit des filtres et le système affiche les actualités correspondantes.}
+
+\section{Conception de Sprint 0}
+\simplebox{Conception du Sprint 0}{Créer compte -- Se connecter -- Consulter actualités -- Filtrer actualité -- Afficher résultat.}
+
+\section{Diagramme de déploiement}
+\simplebox{Déploiement}{Navigateur Angular, serveur FastAPI, base MySQL, API NewsData et service Ollama.}
+
+\section{Réalisation de Sprint 0}
+La réalisation du Sprint 0 a permis de mettre en place les premières interfaces : page d'accueil, formulaire d'inscription, formulaire de connexion, affichage du fil d'actualité et composant de filtrage.
+
+\section{Conclusion}
+Ce sprint a permis de livrer le socle de NewsHub.
+
+\chapter{Sprint 1}
+\section{Introduction}
+Dans ce chapitre, nous présentons le deuxième sprint du projet.
+
+\section{Identification de Backlog de Sprint 1}
+\begin{longtable}{|p{1.5cm}|p{11cm}|p{2cm}|}
+\hline
+\textbf{ID} & \textbf{User Story} & \textbf{Priorité}\\ \hline
+US5 & Commenter une actualité. & 2\\ \hline
+US6 & Enregistrer une actualité. & 2\\ \hline
+US7 & Gérer profil. & 2\\ \hline
+US8 & S'abonner. & 2\\ \hline
+US9 & Discuter avec le chatbot. & 2\\ \hline
+\end{longtable}
+
+\section{Raffinement de Sprint 1}
+\subsection{Gérer profil}
+\simplebox{Gérer profil}{L'utilisateur consulte et modifie les informations de son profil.}
+\subsection{Enregistrer actualité}
+\simplebox{Enregistrer actualité}{L'utilisateur ajoute une actualité à ses favoris.}
+\subsection{Commenter actualité}
+\simplebox{Commenter actualité}{L'utilisateur ajoute un commentaire sur une actualité.}
+\subsection{S'abonner}
+\simplebox{S'abonner}{L'utilisateur choisit une offre et active son statut premium.}
+\subsection{Discuter avec le chatbot}
+\simplebox{Discuter avec le chatbot}{L'utilisateur premium pose une question au chatbot à propos d'un article.}
+
+\section{Conception de Sprint 1}
+\simplebox{Conception du Sprint 1}{Profil utilisateur -- Favoris -- Commentaires -- Abonnement -- Chatbot IA.}
+
+\section{Réalisation de Sprint 1}
+La réalisation du Sprint 1 a permis d'ajouter une page profil complète, la gestion des favoris, le système de commentaires, la simulation d'abonnement premium et l'assistant IA accessible aux utilisateurs premium.
+
+\section{Conclusion}
+Ce sprint complète les fonctionnalités principales de NewsHub.
+
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+Dans ce projet, nous avons conçu et réalisé NewsHub, une plateforme web d'actualités personnalisées avec chatbot IA. Le système répond aux besoins principaux définis au début du projet : consulter des actualités, filtrer le contenu, gérer un compte utilisateur, enregistrer des articles, commenter, s'abonner et interagir avec un assistant intelligent.
+
+Comme perspectives, nous pouvons proposer l'ajout d'un paiement réel, l'amélioration du système de recommandation, l'intégration de notifications, la mise en place de tests automatisés et l'amélioration de la modération.
+
+\end{document}

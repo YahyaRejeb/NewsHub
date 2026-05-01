@@ -45,8 +45,8 @@ export class AuthCard implements OnInit {
     }
   }
 
-  goToNextStep(data: any) {
-    console.log("Registration data collected:", data);
+  goToNextStep(data: { full_name: string; email: string; password: string }) {
+    this.errorMessage = '';
     this.registrationData = data;
     this.step = 2;
     this.cdr.detectChanges();
@@ -58,24 +58,43 @@ export class AuthCard implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.cdr.detectChanges();
-    
-    const payload = {
-      ...this.registrationData,
-      interest_ids: interestIds
-    };
 
-    this.http.post<SignupResponse>('http://127.0.0.1:8000/complete-signup', payload).subscribe({
-      next: (responseData) => {
-        this.isLoading = false;
-        console.log("Signup complete! Auto logging in...");
-        this.authService.setAuthData(responseData.user, responseData.access_token);
-        this.router.navigateByUrl(this.returnUrl);
-        this.cdr.detectChanges();
+    this.http.get<{ exists: boolean }>(
+      `http://127.0.0.1:8000/check-email/${encodeURIComponent(this.registrationData.email)}`
+    ).subscribe({
+      next: (response) => {
+        if (response.exists) {
+          this.isLoading = false;
+          this.errorMessage = 'This account already exists.';
+          this.step = 1;
+          this.cdr.detectChanges();
+          return;
+        }
+
+        const payload = {
+          ...this.registrationData,
+          interest_ids: interestIds
+        };
+
+        this.http.post<SignupResponse>('http://127.0.0.1:8000/complete-signup', payload).subscribe({
+          next: (responseData) => {
+            this.isLoading = false;
+            this.authService.setAuthData(responseData.user, responseData.access_token);
+            this.router.navigateByUrl(this.returnUrl);
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.isLoading = false;
+            this.errorMessage = err.error?.detail || 'An error occurred during signup. Please try again.';
+            console.error('Error completing signup:', err);
+            this.cdr.detectChanges();
+          }
+        });
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err.error?.detail || 'An error occurred during signup. Please try again.';
-        console.error("Error completing signup:", err);
+        this.errorMessage = err.error?.detail || 'Unable to verify the account before creation.';
+        console.error('Error verifying existing account:', err);
         this.cdr.detectChanges();
       }
     });

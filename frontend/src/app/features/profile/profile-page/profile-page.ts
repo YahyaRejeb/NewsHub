@@ -92,6 +92,10 @@ export class ProfilePageComponent implements OnInit {
     return !!this.currentUser?.isPremium;
   }
 
+  get isEditor(): boolean {
+    return this.currentUser?.role === 'editor';
+  }
+
   get premiumPlanLabel(): string {
     return this.currentUser?.premiumPlan ? this.currentUser.premiumPlan : 'free';
   }

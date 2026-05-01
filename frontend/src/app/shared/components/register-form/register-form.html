@@ -12,12 +12,7 @@
 
     <div class="mb-3">
         <label class="form-label">Email</label>
-        <input type="email" class="form-control" name="email" [(ngModel)]="form.email" 
-            (input)="onEmailChange()" [class.is-invalid]="emailExists" 
-            [class.is-valid]="!emailExists && form.email.includes('@') && !isCheckingEmail" required>
-        @if (isCheckingEmail) {
-            <div class="form-text text-muted small">Checking availability...</div>
-        }
+        <input type="email" class="form-control" name="email" [(ngModel)]="form.email" required>
     </div>
 
     <div class="mb-3">

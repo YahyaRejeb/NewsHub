@@ -2,7 +2,7 @@ const backendApiBaseUrl = 'http://127.0.0.1:8000';
 
 export const environment = {
   production: true,
-  newsApiKey: 'pub_e79060a6b07f48949fbc203737376524',
+  newsApiKey: 'pub_830a85cb1ca74f678c613ac8e4d03c11',
   apiBaseUrl: `${backendApiBaseUrl}/news-feed`,
   backendApiBaseUrl
 };

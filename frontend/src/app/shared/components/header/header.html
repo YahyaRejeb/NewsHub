@@ -13,6 +13,8 @@
     </a>
 
     <nav class="header-actions">
+      <a class="live-link" routerLink="/live">Live</a>
+
       <button
         class="theme-btn"
         type="button"
@@ -52,6 +54,7 @@
             </div>
             <span class="profile-name">{{ currentUser.full_name }}</span>
             <span *ngIf="isPremiumUser" class="profile-badge">Premium</span>
+            <span *ngIf="isEditor" class="editor-badge">Editor</span>
             <span class="dropdown-arrow">v</span>
           </button>
 
@@ -62,6 +65,7 @@
               <span class="membership-chip" [class.active]="isPremiumUser">
                 {{ isPremiumUser ? 'Premium member' : 'Standard member' }}
               </span>
+              <span *ngIf="isEditor" class="membership-chip editor-chip">Editor access</span>
             </div>
             <hr class="dropdown-divider" />
             <a class="dropdown-item" routerLink="/profile" (click)="closeDropdown()">

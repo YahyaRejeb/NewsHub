@@ -1,0 +1,163 @@
+<app-header></app-header>
+
+<main class="live-hub-page">
+  <section class="live-hero card">
+    <div class="hero-copy">
+      <span class="eyebrow">Premium live newsroom</span>
+      <h1>Follow real-time coverage inside focused live rooms.</h1>
+      <p>
+        NewsHub now supports premium live rooms with one editor per room, instant updates, live
+        chat, and a dedicated space for event-by-event coverage.
+      </p>
+
+      <div class="hero-tags">
+        <span>Premium access</span>
+        <span>One editor per room</span>
+        <span>Real-time chat</span>
+        <span>WebRTC-ready streaming</span>
+      </div>
+    </div>
+
+    <article class="hero-summary">
+      <span class="section-kicker">Live overview</span>
+      <h2>{{ liveEvents.length }} room{{ liveEvents.length !== 1 ? 's' : '' }} available</h2>
+      <p>
+        Open a room to watch the live stream, track the editor's updates, and join the premium chat
+        conversation.
+      </p>
+      <div class="summary-strip">
+        <strong>{{ currentUser?.role === 'editor' ? 'Editor mode' : 'Viewer mode' }}</strong>
+        <span>
+          {{
+            currentUser?.role === 'editor'
+              ? 'You can create a room and run the live session.'
+              : 'Premium readers can join live rooms when the stream starts.'
+          }}
+        </span>
+      </div>
+    </article>
+  </section>
+
+  <section *ngIf="isEditor" class="editor-layout">
+    <article class="create-panel card">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">Editor tools</span>
+          <h2>Create a new live room</h2>
+          <p>Keep it simple: create the room first, then open it and start the live session there.</p>
+        </div>
+      </div>
+
+      <div *ngIf="createError" class="feedback error">
+        {{ createError }}
+      </div>
+
+      <form class="create-form" [formGroup]="createForm" (ngSubmit)="createLiveRoom()">
+        <label class="field field-full">
+          <span>Room title</span>
+          <input type="text" formControlName="title" placeholder="Election night live" />
+        </label>
+
+        <label class="field field-full">
+          <span>Description</span>
+          <textarea
+            rows="4"
+            formControlName="description"
+            placeholder="Explain what readers will follow in this live room."
+          ></textarea>
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Category</span>
+            <select formControlName="category">
+              <option *ngFor="let category of categories" [value]="category">
+                {{ category | titlecase }}
+              </option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Cover image URL</span>
+            <input type="text" formControlName="coverImage" placeholder="Optional image URL" />
+          </label>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="premiumOnly" />
+          <span>Reserve this room for premium readers.</span>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-action" [disabled]="isCreating">
+            {{ isCreating ? 'Creating room...' : 'Create live room' }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="rooms-section">
+    <div class="rooms-heading">
+      <div>
+        <span class="section-kicker">Rooms</span>
+        <h2>Current live coverage</h2>
+      </div>
+      <p>Browse live, upcoming, and completed rooms from the same clean NewsHub workspace.</p>
+    </div>
+
+    <section *ngIf="loading" class="state-box card">
+      <p>Loading live rooms...</p>
+    </section>
+
+    <section *ngIf="!loading && error" class="state-box card error-box">
+      <p>{{ error }}</p>
+    </section>
+
+    <section *ngIf="!loading && !error && liveEvents.length === 0" class="state-box card">
+      <p>No live rooms have been created yet.</p>
+    </section>
+
+    <div *ngIf="!loading && !error && liveEvents.length > 0" class="rooms-grid">
+      <article *ngFor="let event of liveEvents" class="room-card card">
+        <div class="room-cover" [ngClass]="event.status">
+          <img *ngIf="event.cover_image; else fallbackCover" [src]="event.cover_image" [alt]="event.title" />
+          <ng-template #fallbackCover>
+            <div class="room-fallback">
+              <span>{{ event.category | titlecase }}</span>
+            </div>
+          </ng-template>
+          <span class="status-pill" [ngClass]="event.status">{{ event.status | titlecase }}</span>
+        </div>
+
+        <div class="room-content">
+          <div class="room-meta">
+            <span class="category-pill">{{ event.category | titlecase }}</span>
+            <span>{{ event.viewer_count }} viewers</span>
+          </div>
+
+          <h3>{{ event.title }}</h3>
+          <p>{{ event.description }}</p>
+
+          <div class="room-footer">
+            <span>{{ event.editor_name || 'Assigned editor' }}</span>
+            <div class="room-actions">
+              <button
+                *ngIf="isOwnedByCurrentEditor(event)"
+                type="button"
+                class="delete-link"
+                [disabled]="deletingEventId === event.id"
+                (click)="deleteLiveRoom(event)"
+              >
+                {{ deletingEventId === event.id ? 'Deleting...' : 'Delete' }}
+              </button>
+              <a class="open-link" [routerLink]="['/live', event.id]">Open room</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<app-footer></app-footer>

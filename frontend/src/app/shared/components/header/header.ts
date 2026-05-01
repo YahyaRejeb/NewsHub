@@ -38,6 +38,10 @@ export class HeaderComponent implements OnInit {
     return !!this.currentUser?.isPremium;
   }
 
+  get isEditor(): boolean {
+    return this.currentUser?.role === 'editor';
+  }
+
   get initials(): string {
     if (!this.currentUser?.full_name) {
       return 'N';

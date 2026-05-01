@@ -2,7 +2,7 @@ import { CommonModule, DatePipe, NgClass, TitleCasePipe } from '@angular/common'
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { delay, finalize, of } from 'rxjs';
+import { finalize } from 'rxjs';
 import {
   PremiumCheckoutPayload,
   PremiumPlan,
@@ -127,26 +127,22 @@ export class PremiumPageComponent implements OnInit {
     this.isProcessing = true;
 
     const payload = this.checkoutForm.getRawValue() as PremiumCheckoutPayload & { acceptTerms: boolean };
+    const { acceptTerms: _, ...activationPayload } = payload;
 
-    of(payload)
+    this.premiumService
+      .activatePremium(activationPayload)
       .pipe(
-        delay(1200),
         finalize(() => {
           this.isProcessing = false;
         })
       )
       .subscribe({
-        next: (formValue) => {
-          const upgradedUser = this.premiumService.activatePremium(
-            this.currentUser!,
-            formValue.plan,
-            formValue.cardNumber
-          );
-
-          this.authService.setCurrentUser(upgradedUser);
-          this.simulatedReceipt = this.buildReceiptReference(upgradedUser.id);
-          this.successMessage =
-            'Premium access has been activated in simulation mode. No real payment was processed.';
+        next: (response) => {
+          this.authService.setAuthData(response.user, response.access_token);
+          const upgradedUser = this.authService.currentUserValue;
+          this.currentUser = upgradedUser;
+          this.simulatedReceipt = this.buildReceiptReference(upgradedUser?.id ?? this.currentUser?.id ?? 0);
+          this.successMessage = response.message;
         },
         error: () => {
           this.errorMessage = 'The premium simulation could not be completed. Please try again.';

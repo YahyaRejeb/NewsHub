@@ -4,6 +4,10 @@ export interface UserProfile {
   email: string;
   profile_photo?: string | null;
   interests: PreferredNewsCategory[];
+  role?: UserRole;
+  is_premium?: boolean;
+  premium_plan?: PremiumPlan | null;
+  premium_since?: string | null;
 }
 
 export interface AuthResponse {
@@ -15,6 +19,7 @@ export interface AuthResponse {
 }
 
 export type PremiumPlan = 'monthly' | 'annual';
+export type UserRole = 'user' | 'editor';
 
 export interface PremiumMembership {
   isPremium: boolean;

@@ -1,0 +1,186 @@
+<app-header></app-header>
+
+<main class="live-room-page">
+  <section *ngIf="loading" class="state-box card">
+    <p>Loading the live room...</p>
+  </section>
+
+  <section *ngIf="!loading && error" class="state-box card error-box">
+    <a routerLink="/live" class="back-link">&larr; Back to live hub</a>
+    <p>{{ error }}</p>
+  </section>
+
+  <ng-container *ngIf="!loading && !error && event">
+    <section class="room-hero card">
+      <div class="hero-copy">
+        <a routerLink="/live" class="back-link">&larr; Back to live hub</a>
+        <span class="eyebrow">{{ event.premium_only ? 'Premium live room' : 'Live room' }}</span>
+        <h1>{{ event.title }}</h1>
+        <p>{{ event.description }}</p>
+
+        <div class="meta-row">
+          <span class="category-pill">{{ event.category | titlecase }}</span>
+          <span class="status-pill" [ngClass]="event.status">{{ event.status | titlecase }}</span>
+          <span>{{ event.viewer_count }} viewers online</span>
+          <span>Editor: {{ event.editor_name || 'Assigned editor' }}</span>
+        </div>
+      </div>
+
+      <article class="hero-side">
+        <span class="section-kicker">Connection</span>
+        <h2>{{ connectionLabel }}</h2>
+        <p>{{ streamMessage }}</p>
+        <div class="side-strip">
+          <strong>{{ isRoomEditor ? 'Editor controls available' : 'Viewer access' }}</strong>
+          <span>
+            {{
+              isRoomEditor
+                ? 'You own this room and can start the session, enable the camera, and publish updates.'
+                : 'Join the stream as soon as the editor goes live with the camera broadcast.'
+            }}
+          </span>
+        </div>
+      </article>
+    </section>
+
+    <section *ngIf="showLoginGate" class="gate-card card">
+      <div>
+        <span class="section-kicker">Sign in required</span>
+        <h2>Log in to enter the live room.</h2>
+        <p>
+          NewsHub live rooms are account-based so we can protect the premium experience and keep the
+          editor session secure.
+        </p>
+      </div>
+      <a class="cta-btn" [routerLink]="['/login']" [queryParams]="{ returnUrl: loginReturnUrl }">
+        Log in to continue
+      </a>
+    </section>
+
+    <section *ngIf="showPremiumGate" class="gate-card premium-gate card">
+      <div>
+        <span class="section-kicker">Premium access</span>
+        <h2>This room is reserved for premium readers.</h2>
+        <p>
+          Upgrade with the simple premium checkout to join live streams, receive real-time editor
+          updates, and participate in the premium chat.
+        </p>
+      </div>
+      <a class="cta-btn" [routerLink]="['/premium']" [queryParams]="{ returnUrl: loginReturnUrl }">
+        Unlock premium live access
+      </a>
+    </section>
+
+    <section *ngIf="canJoinLiveRoom" class="room-layout">
+      <article class="live-stage card">
+        <div class="stage-head">
+          <div>
+            <span class="section-kicker">Live stream</span>
+            <h2>{{ isRoomEditor ? 'Editor studio' : 'Viewer stream' }}</h2>
+          </div>
+          <span class="status-text">{{ event.status | titlecase }}</span>
+        </div>
+
+        <div class="video-shell">
+          <video *ngIf="isRoomEditor; else viewerVideo" #localVideo class="live-video" autoplay muted playsinline controls></video>
+          <ng-template #viewerVideo>
+            <video #remoteVideo class="live-video" autoplay playsinline controls></video>
+          </ng-template>
+
+          <div class="video-overlay" *ngIf="!isRoomEditor && (event.status !== 'live' || !hasRemoteStream)">
+            <h3>{{ event.status === 'live' ? 'Waiting for the editor camera...' : 'The live stream has not started yet' }}</h3>
+            <p>{{ streamMessage }}</p>
+          </div>
+        </div>
+
+        <p *ngIf="cameraError" class="camera-error">{{ cameraError }}</p>
+
+        <div *ngIf="isRoomEditor" class="editor-controls">
+          <button type="button" class="secondary-btn" (click)="prepareCamera()">
+            {{ isCameraPrepared ? 'Refresh camera preview' : 'Enable camera preview' }}
+          </button>
+          <button type="button" class="primary-btn" (click)="startLiveRoom()" [disabled]="loadingAction || event.status === 'live'">
+            {{ loadingAction && event.status !== 'live' ? 'Starting room...' : 'Start live room' }}
+          </button>
+          <button type="button" class="primary-btn warm-btn" (click)="goLiveWithCamera()" [disabled]="event.status !== 'live'">
+            Go live with camera
+          </button>
+          <button type="button" class="secondary-btn danger-btn" (click)="endLiveRoom()" [disabled]="loadingAction || event.status === 'ended'">
+            {{ loadingAction && event.status !== 'ended' ? 'Ending room...' : 'End live room' }}
+          </button>
+          <button type="button" class="secondary-btn delete-room-btn" (click)="deleteLiveRoom()" [disabled]="isDeletingRoom">
+            {{ isDeletingRoom ? 'Deleting room...' : 'Delete room' }}
+          </button>
+        </div>
+
+        <div *ngIf="isRoomEditor" class="update-composer">
+          <div class="composer-head">
+            <h3>Official editor update</h3>
+            <p>Post quick timeline updates that appear instantly for everyone in the room.</p>
+          </div>
+          <textarea
+            [(ngModel)]="editorUpdateText"
+            rows="4"
+            placeholder="Example: The press conference has just started."
+          ></textarea>
+          <button type="button" class="primary-btn" (click)="publishEditorUpdate()">
+            Publish update
+          </button>
+        </div>
+
+        <section class="updates-panel">
+          <div class="panel-head">
+            <h3>Live timeline</h3>
+            <span>{{ updates.length }} update{{ updates.length !== 1 ? 's' : '' }}</span>
+          </div>
+
+          <div *ngIf="updates.length === 0" class="empty-box">
+            <p>No official updates have been published yet.</p>
+          </div>
+
+          <article *ngFor="let update of updates" class="timeline-item">
+            <strong>{{ update.user_name }}</strong>
+            <p>{{ update.content }}</p>
+            <span>{{ update.created_at | date:'MMM d, y, h:mm a' }}</span>
+          </article>
+        </section>
+      </article>
+
+      <aside class="chat-column card">
+        <div class="stage-head">
+          <div>
+            <span class="section-kicker">Premium chat</span>
+            <h2>Room conversation</h2>
+          </div>
+        </div>
+
+        <div class="chat-list">
+          <div *ngIf="chatMessages.length === 0" class="empty-box">
+            <p>No chat messages yet. Start the conversation when the room goes live.</p>
+          </div>
+
+          <article *ngFor="let message of chatMessages" class="chat-item">
+            <div class="chat-meta">
+              <strong>{{ message.user_name }}</strong>
+              <span>{{ message.created_at | date:'h:mm a' }}</span>
+            </div>
+            <p>{{ message.content }}</p>
+          </article>
+        </div>
+
+        <div class="chat-form">
+          <textarea
+            [(ngModel)]="chatText"
+            rows="4"
+            placeholder="Write a message to the room..."
+          ></textarea>
+          <button type="button" class="primary-btn dark-btn" (click)="sendChatMessage()" [disabled]="!canSendChat">
+            Send message
+          </button>
+        </div>
+      </aside>
+    </section>
+  </ng-container>
+</main>
+
+<app-footer></app-footer>
