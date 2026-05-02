@@ -89,7 +89,7 @@
         </label>
 
         <div class="form-actions">
-          <button type="submit" class="primary-action" [disabled]="isCreating">
+          <button type="submit" class="primary-action" [disabled]="isCreating || createForm.invalid">
             {{ isCreating ? 'Creating room...' : 'Create live room' }}
           </button>
         </div>

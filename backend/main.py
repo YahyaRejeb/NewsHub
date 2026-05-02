@@ -678,7 +678,8 @@ def check_email(email: str, db: Session = Depends(database.get_db)):
 @app.post("/login")
 def login(data: schemas.LoginData, db: Session = Depends(database.get_db)):
     try:
-        user = db.query(models.User).filter(models.User.email == data.email).first()
+        normalized_email = data.email.strip().lower()
+        user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
         
         if not user or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid email or password")

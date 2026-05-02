@@ -6,3 +6,4 @@ bcrypt
 sqlalchemy
 pymysql
 python-jose[cryptography]
+websockets

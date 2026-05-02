@@ -32,11 +32,16 @@ export class LoginForm {
   }
 
   onSubmit() {
+    const normalizedEmail = this.form.email.trim().toLowerCase();
+
     this.isLoading = true;
     this.errorMessage = '';
     this.cdr.detectChanges();
 
-    this.http.post<AuthResponse>('http://127.0.0.1:8000/login', this.form).subscribe({
+    this.http.post<AuthResponse>('http://127.0.0.1:8000/login', {
+      ...this.form,
+      email: normalizedEmail
+    }).subscribe({
       next: (res) => {
         this.isLoading = false;
         this.loginSuccess.emit(res);

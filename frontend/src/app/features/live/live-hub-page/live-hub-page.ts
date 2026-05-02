@@ -50,8 +50,8 @@ export class LiveHubPageComponent implements OnInit {
   ];
 
   readonly createForm = this.formBuilder.nonNullable.group({
-    title: ['', [Validators.required, Validators.minLength(4)]],
-    description: ['', [Validators.required, Validators.minLength(12)]],
+    title: ['', [Validators.required]],
+    description: ['', [Validators.required]],
     category: ['technology', [Validators.required]],
     coverImage: [''],
     premiumOnly: [true]

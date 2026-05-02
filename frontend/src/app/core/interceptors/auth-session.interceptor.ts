@@ -8,7 +8,7 @@ export const authSessionInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
+      if (error instanceof HttpErrorResponse && error.status === 401 && !isPublicNewsRequest(req.url)) {
         authService.logout();
       }
 
@@ -16,3 +16,7 @@ export const authSessionInterceptor: HttpInterceptorFn = (req, next) => {
     })
   );
 };
+
+function isPublicNewsRequest(url: string): boolean {
+  return url.includes('/news-feed') || url.includes('/api/1/news') || url.includes('newsdata.io');
+}
