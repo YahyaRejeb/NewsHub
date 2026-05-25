@@ -29,9 +29,9 @@
         <strong>{{ currentUser?.role === 'editor' ? 'Editor mode' : 'Viewer mode' }}</strong>
         <span>
           {{
-            currentUser?.role === 'editor'
-              ? 'You can create a room and run the live session.'
-              : 'Premium readers can join live rooms when the stream starts.'
+          currentUser?.role === 'editor'
+          ? 'You can create a room and run the live session.'
+          : 'Premium readers can join live rooms when the stream starts.'
           }}
         </span>
       </div>
@@ -60,11 +60,8 @@
 
         <label class="field field-full">
           <span>Description</span>
-          <textarea
-            rows="4"
-            formControlName="description"
-            placeholder="Explain what readers will follow in this live room."
-          ></textarea>
+          <textarea rows="4" formControlName="description"
+            placeholder="Explain what readers will follow in this live room."></textarea>
         </label>
 
         <div class="field-row">
@@ -142,13 +139,8 @@
           <div class="room-footer">
             <span>{{ event.editor_name || 'Assigned editor' }}</span>
             <div class="room-actions">
-              <button
-                *ngIf="isOwnedByCurrentEditor(event)"
-                type="button"
-                class="delete-link"
-                [disabled]="deletingEventId === event.id"
-                (click)="deleteLiveRoom(event)"
-              >
+              <button *ngIf="isOwnedByCurrentEditor(event)" type="button" class="delete-link"
+                [disabled]="deletingEventId === event.id" (click)="deleteLiveRoom(event)">
                 {{ deletingEventId === event.id ? 'Deleting...' : 'Delete' }}
               </button>
               <a class="open-link" [routerLink]="['/live', event.id]">Open room</a>

@@ -1,0 +1,24 @@
+{
+  "name": "mini-projet",
+  "version": "1.0.0",
+  "description": "NewsHub is now organized into two clear parts:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benslimenmohamedaziz3-bot/mini-projet.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/benslimenmohamedaziz3-bot/mini-projet/issues"
+  },
+  "homepage": "https://github.com/benslimenmohamedaziz3-bot/mini-projet#readme",
+  "dependencies": {
+    "docx": "^9.6.1"
+  }
+}

@@ -47,20 +47,22 @@ def _ensure_database_exists(database_url: URL) -> None:
     if not database_url.database:
         return
 
-    server_url = database_url.set(database=None)
-    temporary_engine = create_engine(server_url, pool_pre_ping=True)
-    database_name = database_url.database.replace("`", "``")
-
+    import pymysql
     try:
-        with temporary_engine.begin() as connection:
-            connection.execute(
-                text(
-                    f"CREATE DATABASE IF NOT EXISTS `{database_name}` "
-                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-                )
-            )
-    finally:
-        temporary_engine.dispose()
+        connection = pymysql.connect(
+            host=database_url.host or "localhost",
+            port=database_url.port or 3306,
+            user=database_url.username or "root",
+            password=database_url.password or "",
+            charset="utf8mb4"
+        )
+        database_name = database_url.database.replace("`", "``")
+        with connection.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{database_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        connection.commit()
+        connection.close()
+    except Exception as e:
+        print(f"Warning: Could not auto-create database: {e}")
 
 
 SQLALCHEMY_DATABASE_URL = _build_database_url()
